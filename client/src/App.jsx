@@ -242,14 +242,14 @@ function App() {
         <div className="arena" style={{ "--player-count": state.players.length }}>
           {state.players.map((p, i) => {
             const angle = (360 / state.players.length) * i - 90;
-            return <div className={`arena-player ${p.id === socket.id ? "self" : ""} ${p.id === state.turnPlayerId ? "turn" : ""} ${!p.connected ? "disconnected" : ""}`} key={p.id} style={{ "--seat-angle": `${angle}deg` }}>
+            return <div className={`arena-player ${p.id === socket.id ? "self" : ""} ${p.id === state.turnPlayerId ? "turn" : ""} ${!p.connected ? "disconnected" : ""}`} key={p.id} style={{ "--seat-angle": `${angle}deg`, "--seat-radius": `${Math.min(310, 180 + state.players.length * 4)}px`, "--seat-width": `${Math.max(44, 112 - state.players.length * 1.7)}px` }}>
               <div className="human-avatar"><span className="human-head"></span><span className="human-body"></span></div>
               <strong title={p.name}>{p.name}{p.id === socket.id ? " (You)" : ""}</strong>
               <span className="player-card-count">{p.count}<small>CARDS</small></span>
               {p.id === state.turnPlayerId && <span className="turn-indicator">TURN</span>}
             </div>;
           })}
-          <div className={`middle-pile compact-pile ${feedback}`}>
+          <div className="middle-pile compact-pile">
             <div className="pile-label">MIDDLE DECK <span>{state.pile.length} cards</span></div>
             {state.pile.length ? <div className="card-fan compact-fan">
               {state.pile.slice(-5).map((card, i) => <div className={`playing-card compact-card ${card.hidden ? "hidden-card" : ""}`} key={`${card.id || "hidden"}-${state.pile.length}-${i}`} style={{ transform: `rotate(${(i - 2) * 5}deg) translateY(${Math.abs(i - 2) * 2}px)` }}>
