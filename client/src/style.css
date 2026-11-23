@@ -133,3 +133,5 @@ button:disabled,.primary:disabled,.slap-btn:disabled{background:#454a45!importan
 @keyframes table-win{0%,100%{transform:scale(1)}25%{transform:scale(1.07) rotate(-1deg);border-color:#eaff9b;box-shadow:0 0 90px #d9f36a99}55%{transform:scale(1.025) rotate(1deg)}}
 @keyframes table-loss{0%,100%{transform:translateX(0)}15%,45%,75%{transform:translateX(-16px) rotate(-1deg);border-color:#ff7065;box-shadow:0 0 60px #f0443688}30%,60%,90%{transform:translateX(16px) rotate(1deg)}}
 @media(max-width:760px){.table-area{min-height:unset}.middle-pile{min-height:42vh;padding:20px 12px}.card-fan{height:clamp(180px,24vh,260px);gap:10px}.playing-card{width:clamp(100px,26vw,150px);height:clamp(150px,23vh,220px);font-size:clamp(68px,15vw,100px)}.playing-card.hidden-card{font-size:54px}.impact-overlay span{font-size:clamp(56px,16vw,100px)}}
+
+.sound-preview-link{display:inline-block;margin-top:8px;color:#d9f36a;font-size:11px;text-decoration:underline;text-underline-offset:3px}
