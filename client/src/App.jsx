@@ -73,7 +73,9 @@ function App() {
     socket.emit(event, payload, result => {
       if (!result?.ok) setError(result?.error || "Something went wrong.");
       else if (event === "slap") {
-        setNotice(result.correct ? `Correct slap: ${result.pattern}!` : `Wrong slap: +${result.penalty} penalty cards.`);\n        setFeedback(result.correct ? "success" : "penalty");\n        playSound(result.correct);
+        setNotice(result.correct ? `Correct slap: ${result.pattern}!` : `Wrong slap: +${result.penalty} penalty cards.`);
+        setFeedback(result.correct ? "success" : "penalty");
+        playSound(result.correct);
       }
     });
   };
@@ -96,7 +98,9 @@ function App() {
     });
   };
 
-  const keyName = key => key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key;\n\n  const copyCode = async () => {
+  const keyName = key => key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key;
+
+  const copyCode = async () => {
     try { await navigator.clipboard.writeText(roomCode); setNotice("Room code copied."); }
     catch { setNotice(`Room code: ${roomCode}`); }
   };
@@ -153,8 +157,8 @@ function App() {
           <div className={`middle-pile ${feedback}`}>
             <div className="pile-label">MIDDLE DECK <span>{state.pile.length} cards</span></div>
             {state.pile.length ? <div className="card-fan">
-              {state.pile.slice(-7).map((card, i) => <div className={`playing-card ${card.hidden ? "hidden-card" : card.color}`} key={`${card.id || "hidden"}-${state.pile.length}-${i}`} style={{ transform: `rotate(${(i - Math.min(state.pile.slice(-7).length - 1, 6) / 2) * 5}deg) translateY(${Math.abs(i - 3) * 3}px)` }}>
-                {card.hidden ? <span>?</span> : <><span>{card.value}</span><small>{card.color[0].toUpperCase()}</small></>}
+              {state.pile.slice(-3).map((card, i) => <div className={`playing-card ${card.hidden ? "hidden-card" : ""}`} key={`${card.id || "hidden"}-${state.pile.length}-${i}`} style={{ transform: `rotate(${(i - 1) * 5}deg) translateY(${Math.abs(i - 1) * 3}px)` }}>
+                {card.hidden ? <span>?</span> : <span>{card.value}</span>}
               </div>)}
             </div> : <div className="empty-pile">Cards played will appear here</div>}
             <div className="pile-total">{state.pile.length} <small>TOTAL CARDS</small></div>
@@ -185,7 +189,8 @@ function App() {
         <div><b>3. Slap</b><p>Slap at any time. A correct slap wins the whole middle pile.</p></div>
         <div><b>4. Penalty</b><p>A wrong slap adds up to 2 cards from your hand face-down to the middle pile.</p></div>
       </div>
-      <p className="patterns"><strong>Valid slaps:</strong> Doubles · Sandwich · Three consecutive numbers (ascending or descending, no wraparound) · Two cards adding up to 10.</p>\n      {showSettings && <div className="settings-row"><div><b>Keyboard shortcuts</b><p>Shortcuts are saved in this browser. Click a key and press its replacement.</p></div><button className="secondary" onClick={() => setRemapping("slap")}>Slap: {keyName(keys.slap)} {remapping === "slap" ? "— press key…" : ""}</button><button className="secondary" onClick={() => setRemapping("play")}>Play: {keyName(keys.play)} {remapping === "play" ? "— press key…" : ""}</button><button className="secondary" onClick={() => { const defaults = { slap: " ", play: "Enter" }; setKeys(defaults); localStorage.setItem("ers-keys", JSON.stringify(defaults)); setRemapping(""); }}>Reset</button></div>}
+      <p className="patterns"><strong>Valid slaps:</strong> Doubles · Sandwich · Three consecutive numbers (ascending or descending, no wraparound) · Two cards adding up to 10.</p>
+      {showSettings && <div className="settings-row"><div><b>Keyboard shortcuts</b><p>Shortcuts are saved in this browser. Click a key and press its replacement.</p></div><button className="secondary" onClick={() => setRemapping("slap")}>Slap: {keyName(keys.slap)} {remapping === "slap" ? "— press key…" : ""}</button><button className="secondary" onClick={() => setRemapping("play")}>Play: {keyName(keys.play)} {remapping === "play" ? "— press key…" : ""}</button><button className="secondary" onClick={() => { const defaults = { slap: " ", play: "Enter" }; setKeys(defaults); localStorage.setItem("ers-keys", JSON.stringify(defaults)); setRemapping(""); }}>Reset</button></div>}
     </section>
   </main>;
 }
