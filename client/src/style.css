@@ -259,3 +259,5 @@ button:disabled,.primary:disabled,.slap-btn:disabled{background:#454a45!importan
  .action-rail .slap-btn small{font-size:8px}
  .winner-banner{font-size:clamp(30px,9vw,48px)}
 }
+
+@media(max-width:760px){.arena-player{--seat-radius:clamp(155px,46vw,180px)}}
