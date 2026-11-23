@@ -184,7 +184,7 @@ io.on("connection", socket => {
     if (room.players[0].id !== player.id) return ack({ ok: false, error: "Only the room host can change deck settings." });
     if (room.status !== "lobby") return ack({ ok: false, error: "Deck settings are locked after the game starts." });
     const parsed = Number(copies);
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 8) return ack({ ok: false, error: "Choose between 1 and 8 copies." });
+    if (!Number.isInteger(parsed) || parsed < MIN_CARD_COPIES || parsed > MAX_CARD_COPIES) return ack({ ok: false, error: `Choose between ${MIN_CARD_COPIES} and ${MAX_CARD_COPIES} copies.` });
     room.cardCopies = parsed;
     room.lastAction = `${player.name} set ${parsed} copies of each number (${10 * parsed} cards total).`;
     ack({ ok: true });
