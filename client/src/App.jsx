@@ -4,11 +4,22 @@ import { io } from "socket.io-client";
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 const FEEDBACK_DURATION_MS = 1000;
 const socket = io(SERVER_URL, { autoConnect: true });
-const feedbackSounds = {
-  success: new Audio("/sounds/slap-success.ogg"),
-  penalty: new Audio("/sounds/slap-penalty.ogg")
-};
-Object.values(feedbackSounds).forEach(sound => { sound.preload = "auto"; sound.load(); });
+const AudioContextClass = typeof window !== "undefined" ? (window.AudioContext || window.webkitAudioContext) : null;
+const feedbackAudioContext = AudioContextClass ? new AudioContextClass() : null;
+const feedbackBuffersPromise = feedbackAudioContext
+  ? Promise.all([
+      ["success", "/sounds/slap-success.ogg"],
+      ["penalty", "/sounds/slap-penalty.ogg"]
+    ].map(async ([name, path]) => {
+      const response = await fetch(path);
+      if (!response.ok) throw new Error(`Could not load ${path}`);
+      return [name, await feedbackAudioContext.decodeAudioData(await response.arrayBuffer())];
+    })).then(Object.fromEntries).catch(() => ({}))
+  : Promise.resolve({});
+
+function unlockFeedbackAudio() {
+  if (feedbackAudioContext?.state === "suspended") feedbackAudioContext.resume().catch(() => {});
+}
 
 function App() {
   const [name, setName] = useState(() => localStorage.getItem("ers-player-name") || "");
@@ -76,18 +87,14 @@ function App() {
   }, [inviteRoom, hasSavedPlayerName, name, roomCode, inviteJoinAttempted]);
 
   const playSound = correct => {
-    const sound = feedbackSounds[correct ? "success" : "penalty"];
-    try {
-      sound.pause();
-      sound.currentTime = 0;
-      const playback = sound.play();
-      const stopAtDuration = () => window.setTimeout(() => {
-        sound.pause();
-        sound.currentTime = 0;
-      }, FEEDBACK_DURATION_MS);
-      if (playback?.then) playback.then(stopAtDuration).catch(() => {});
-      else stopAtDuration();
-    } catch { /* Audio is optional. */ }
+    feedbackBuffersPromise.then(buffers => {
+      const buffer = buffers[correct ? "success" : "penalty"];
+      if (!buffer || !feedbackAudioContext || feedbackAudioContext.state !== "running") return;
+      const source = feedbackAudioContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(feedbackAudioContext.destination);
+      source.start();
+    }).catch(() => { /* Audio is optional. */ });
   };
 
   const me = state?.players.find(p => p.id === socket.id);
@@ -98,6 +105,7 @@ function App() {
   const canPlay = state?.status === "playing" && isMyTurn && state.myCards > 0;
 
   const act = (event, payload = {}) => {
+    if (event === "slap") unlockFeedbackAudio();
     setError("");
     setNotice("");
     socket.emit(event, payload, result => {
@@ -160,7 +168,7 @@ function App() {
         <input value={roomInput} onChange={e => setRoomInput(e.target.value.toUpperCase())} maxLength={5} placeholder="ROOM CODE" readOnly={Boolean(inviteRoom)} />
         <button className="secondary full" onClick={join}>{inviteRoom ? "Join invited room" : "Join room"}</button>
         {error && <p className="error">{error}</p>}
-        <p className="tiny">2–40 players · Two copies of each number (0–9) · No one can see their own cards</p>
+        <p className="tiny">2–40 players · Deck size is set by the room host · No one can see their own cards</p>
       </section>
     </main>;
   }
@@ -194,7 +202,18 @@ function App() {
           <p className="sub">Share this invite link. Anyone who opens it can join this room.</p>
           <div className="big-code">{roomCode}</div>
           <a className="invite-url" href={inviteUrl}>{inviteUrl}</a><button className="secondary" onClick={copyInviteLink}>Copy invite link</button>
-          {isHost ? <button className="primary" disabled={state.players.length < 2} onClick={() => act("startGame")}>Start game</button> : <p className="tiny">Waiting for the host to start…</p>}
+          <div className="deck-setting">
+            <label htmlFor="card-copies">Copies of each number (0–9)</label>
+            {isHost ? <select id="card-copies" value={state.cardCopies || 2} onChange={event => {
+              const copies = Number(event.target.value);
+              socket.emit("setCardCopies", { copies }, result => {
+                if (!result?.ok) setError(result?.error || "Could not update deck settings.");
+                else setError("");
+              });
+            }}>{Array.from({ length: 8 }, (_, index) => index + 1).map(copies => <option key={copies} value={copies}>{copies} {copies === 1 ? "copy" : "copies"} · {copies * 10} cards</option>)}</select> : <p className="deck-setting-value">{state.cardCopies || 2} copies · {(state.cardCopies || 2) * 10} cards total</p>}
+          </div>
+          {state.players.length > 10 * (state.cardCopies || 2) && <p className="error">Not enough cards for all players. Increase copies or remove players.</p>}
+          {isHost ? <button className="primary" disabled={state.players.length < 2 || state.players.length > 10 * (state.cardCopies || 2)} onClick={() => act("startGame")}>Start game</button> : <p className="tiny">Waiting for the host to start…</p>}
         </div> : <>
           <div className={`middle-pile ${feedback}`}>
             <div className="pile-label">MIDDLE DECK <span>{state.pile.length} cards</span></div>
@@ -232,7 +251,7 @@ function App() {
         <div><b>4. Penalty</b><p>A wrong slap adds up to 2 cards from your hand face-down to the middle pile.</p></div>
       </div>
       <p className="patterns"><strong>Valid slaps:</strong> Doubles · Sandwich · Three consecutive numbers (ascending or descending, no wraparound) · Two cards adding up to 10.</p>
-      {showSettings && <div className="settings-row"><div><b>Keyboard shortcuts</b><p>Shortcuts are saved in this browser. Click a key and press its replacement.</p><a className="sound-preview-link" href="https://pixabay.com/sound-effects/people-crowd-cheer-applause-victory-fanfare-clapping-236698/" target="_blank" rel="noreferrer">Preview crowd-cheer victory sound ↗</a></div><button className="secondary" onClick={() => setRemapping("slap")}>Slap: {keyName(keys.slap)} {remapping === "slap" ? "— press key…" : ""}</button><button className="secondary" onClick={() => setRemapping("play")}>Play: {keyName(keys.play)} {remapping === "play" ? "— press key…" : ""}</button><button className="secondary" onClick={() => { const defaults = { slap: " ", play: "Enter" }; setKeys(defaults); localStorage.setItem("ers-keys", JSON.stringify(defaults)); setRemapping(""); }}>Reset</button></div>}
+      {showSettings && <div className="settings-row"><div><b>Keyboard shortcuts</b><p>Shortcuts are saved in this browser. Click a key and press its replacement.</p></div><button className="secondary" onClick={() => setRemapping("slap")}>Slap: {keyName(keys.slap)} {remapping === "slap" ? "— press key…" : ""}</button><button className="secondary" onClick={() => setRemapping("play")}>Play: {keyName(keys.play)} {remapping === "play" ? "— press key…" : ""}</button><button className="secondary" onClick={() => { const defaults = { slap: " ", play: "Enter" }; setKeys(defaults); localStorage.setItem("ers-keys", JSON.stringify(defaults)); setRemapping(""); }}>Reset</button></div>}
     </section>
   </main>;
 }
