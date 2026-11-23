@@ -139,11 +139,14 @@ function App() {
   const isHost = state?.players[0]?.id === socket.id;
   const isMyTurn = state?.turnPlayerId === socket.id;
   const winner = state?.players.find(p => p.id === state?.winnerId);
-  const canSlap = state?.status === "playing" && state.myCards > 0 && state.pile.length >= 2;
-  const canPlay = state?.status === "playing" && isMyTurn && state.myCards > 0;
-  const seatAngle = index => state.players.length === 2
-    ? (index === 0 ? 180 : 0)
-    : (360 / state.players.length) * index - 90;
+  const canSlap = state?.status === "playing" && !state.transitioning && state.myCards > 0 && state.pile.length >= 2;
+  const canPlay = state?.status === "playing" && !state.transitioning && isMyTurn && state.myCards > 0;
+  const seatPosition = index => {
+    const angle = state.players.length === 2 ? index * 180 : (360 / state.players.length) * index - 90;
+    const radians = angle * Math.PI / 180;
+    return { "--seat-x": (Math.cos(radians) * 42) + "%", "--seat-y": (Math.sin(radians) * 39) + "%" };
+  };
+  const seatAngle = index => state.players.length === 2 ? index * 180 : (360 / state.players.length) * index - 90;
   const slapPlayerIndex = slapFx ? state.players.findIndex(p => p.id === slapFx.playerId) : -1;
   const slapAngle = slapPlayerIndex >= 0 ? seatAngle(slapPlayerIndex) : -90;
   const playPlayerIndex = playFx ? state.players.findIndex(p => p.id === playFx.playerId) : -1;
@@ -251,14 +254,13 @@ function App() {
           <div><p className="eyebrow">ROOM {roomCode}</p><h2>{state.status === "finished" ? "Round complete" : "Game in progress"}</h2></div>
           <div className="table-status"><span className={`status-dot ${state.status === "playing" ? "live" : ""}`}></span>{state.status === "finished" ? "GAME OVER" : "GAME IN PROGRESS"}</div>
         </div>
-        <div className="arena" style={{ "--player-count": state.players.length }}>
+        <div className={`arena ${state.transitioning ? "transitioning" : ""}`} style={{ "--player-count": state.players.length }}>
           {state.players.map((p, i) => {
-            const angle = seatAngle(i);
-            return <div className={`arena-player ${p.id === socket.id ? "self" : ""} ${p.id === state.turnPlayerId ? "turn" : ""} ${!p.connected ? "disconnected" : ""}`} key={p.id} style={{ "--seat-angle": `${angle}deg` }}>
+            return <div className={`arena-player ${p.id === socket.id ? "self" : ""} ${p.id === state.turnPlayerId && !state.transitioning ? "turn" : ""} ${!p.connected ? "disconnected" : ""}`} key={p.id} style={seatPosition(i)}>
               <div className="human-avatar"><span className="human-head"></span><span className="human-body"></span></div>
               <strong title={p.name}>{p.name}{p.id === socket.id ? " (You)" : ""}</strong>
               <span className="player-card-count">{p.count}<small>CARDS</small></span>
-              {p.id === state.turnPlayerId && <span className="turn-indicator">TURN</span>}
+              {p.id === state.turnPlayerId && !state.transitioning && <span className="turn-indicator">TURN</span>}
             </div>;
           })}
           <div className="middle-pile compact-pile">
@@ -283,7 +285,7 @@ function App() {
         <aside className="action-rail panel">
           <div className="rail-hand"><span className="eyebrow">YOUR HAND</span><strong>{state.myCards}</strong><small>cards remaining</small></div>
           <button className="primary play-btn" disabled={!canPlay} onClick={() => act("playCard")}>{isMyTurn ? "PLAY CARD" : "WAIT TURN"}</button>
-          <button className="slap-btn" disabled={!canSlap} onClick={() => act("slap")}><span>SLAP</span><small>{state.myCards === 0 ? "No cards left" : state.pile.length < 2 ? "Need 2 cards in pile" : "Claim the pile"}</small></button>
+          <button className="slap-btn" disabled={!canSlap} onClick={() => act("slap")}><span>SLAP</span><small>{state.transitioning ? "Resolving slap…" : state.myCards === 0 ? "No cards left" : state.pile.length < 2 ? "Need 2 cards in pile" : "Claim the pile"}</small></button>
         </aside>
         {state.status === "finished" && <div className="panel result"><p>{state.lastAction}</p></div>}
       </>}
