@@ -24,6 +24,44 @@ function App() {
     return () => socket.off("state", setState);
   }, []);
 
+  useEffect(() => {
+    const onKeyDown = event => {
+      if (remapping) {
+        event.preventDefault();
+        const next = { ...keys, [remapping]: event.key };
+        setKeys(next); localStorage.setItem("ers-keys", JSON.stringify(next)); setRemapping("");
+        return;
+      }
+      if (event.repeat || event.ctrlKey || event.altKey || event.metaKey) return;
+      if (event.target?.matches?.("input, textarea, select, [contenteditable=true]")) return;
+      if (event.key === keys.slap) { event.preventDefault(); act("slap"); }
+      else if (event.key === keys.play) { event.preventDefault(); act("playCard"); }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [keys, remapping, state, roomCode]);
+
+  useEffect(() => {
+    if (!feedback) return;
+    const timer = window.setTimeout(() => setFeedback(""), 900);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
+
+  const playSound = correct => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const context = new AudioContext();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "sine"; oscillator.frequency.value = correct ? 880 : 180;
+      gain.gain.setValueAtTime(0.12, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.22);
+      oscillator.connect(gain); gain.connect(context.destination);
+      oscillator.start(); oscillator.stop(context.currentTime + 0.22);
+      oscillator.onended = () => context.close();
+    } catch { /* Audio is optional. */ }
+  };
+
   const me = state?.players.find(p => p.id === socket.id);
   const isHost = state?.players[0]?.id === socket.id;
   const isMyTurn = state?.turnPlayerId === socket.id;
@@ -35,7 +73,7 @@ function App() {
     socket.emit(event, payload, result => {
       if (!result?.ok) setError(result?.error || "Something went wrong.");
       else if (event === "slap") {
-        setNotice(result.correct ? `Correct slap: ${result.pattern}!` : `Wrong slap: +${result.penalty} penalty cards.`);
+        setNotice(result.correct ? `Correct slap: ${result.pattern}!` : `Wrong slap: +${result.penalty} penalty cards.`);\n        setFeedback(result.correct ? "success" : "penalty");\n        playSound(result.correct);
       }
     });
   };
