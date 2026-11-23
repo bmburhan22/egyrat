@@ -2,11 +2,20 @@ import React, { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+const FEEDBACK_DURATION_MS = 1000;
 const socket = io(SERVER_URL, { autoConnect: true });
+const feedbackSounds = {
+  success: new Audio("/sounds/slap-success.ogg"),
+  penalty: new Audio("/sounds/slap-penalty.ogg")
+};
+Object.values(feedbackSounds).forEach(sound => { sound.preload = "auto"; sound.load(); });
 
 function App() {
-  const [name, setName] = useState("");
-  const [roomInput, setRoomInput] = useState("");
+  const [name, setName] = useState(() => localStorage.getItem("ers-player-name") || "");
+  const [inviteRoom] = useState(() => new URLSearchParams(window.location.search).get("room")?.trim().toUpperCase() || "");
+  const [inviteJoinAttempted, setInviteJoinAttempted] = useState(false);
+  const [hasSavedPlayerName] = useState(() => Boolean(localStorage.getItem("ers-player-name")));
+  const [roomInput, setRoomInput] = useState(() => new URLSearchParams(window.location.search).get("room")?.trim().toUpperCase() || "");
   const [roomCode, setRoomCode] = useState("");
   const [state, setState] = useState(null);
   const [error, setError] = useState("");
@@ -43,15 +52,41 @@ function App() {
 
   useEffect(() => {
     if (!feedback) return;
-    const timer = window.setTimeout(() => setFeedback(""), 1600);
+    const timer = window.setTimeout(() => setFeedback(""), FEEDBACK_DURATION_MS);
     return () => window.clearTimeout(timer);
   }, [feedback]);
 
+  useEffect(() => {
+    if (!inviteRoom || !hasSavedPlayerName || !name.trim() || roomCode || inviteJoinAttempted) return;
+    const tryJoin = () => {
+      setInviteJoinAttempted(true);
+      socket.emit("joinRoom", { name: name.trim(), code: inviteRoom }, result => {
+        if (!result?.ok) {
+          setError(result?.error || "Could not join invited room.");
+          return;
+        }
+        localStorage.setItem("ers-player-name", name.trim());
+        setRoomCode(result.code);
+        setError("");
+      });
+    };
+    if (socket.connected) tryJoin();
+    else socket.once("connect", tryJoin);
+    return () => socket.off("connect", tryJoin);
+  }, [inviteRoom, hasSavedPlayerName, name, roomCode, inviteJoinAttempted]);
+
   const playSound = correct => {
+    const sound = feedbackSounds[correct ? "success" : "penalty"];
     try {
-      const sound = new Audio(correct ? "/sounds/slap-success.mp3" : "/sounds/slap-penalty.mp3");
-      sound.volume = 1;
-      sound.play().catch(() => {});
+      sound.pause();
+      sound.currentTime = 0;
+      const playback = sound.play();
+      const stopAtDuration = () => window.setTimeout(() => {
+        sound.pause();
+        sound.currentTime = 0;
+      }, FEEDBACK_DURATION_MS);
+      if (playback?.then) playback.then(stopAtDuration).catch(() => {});
+      else stopAtDuration();
     } catch { /* Audio is optional. */ }
   };
 
@@ -79,25 +114,36 @@ function App() {
     if (!name.trim()) return setError("Enter a player name.");
     socket.emit("createRoom", { name }, result => {
       if (!result?.ok) return setError(result?.error || "Could not create room.");
+      localStorage.setItem("ers-player-name", name.trim());
       setRoomCode(result.code);
+      window.history.replaceState({}, "", result.invitePath || `/?room=${result.code}`);
       setError("");
     });
   };
 
   const join = () => {
     if (!name.trim() || !roomInput.trim()) return setError("Enter your name and room code.");
-    socket.emit("joinRoom", { name, code: roomInput }, result => {
+    const cleanName = name.trim();
+    socket.emit("joinRoom", { name: cleanName, code: roomInput }, result => {
       if (!result?.ok) return setError(result?.error || "Could not join room.");
+      localStorage.setItem("ers-player-name", cleanName);
       setRoomCode(result.code);
+      window.history.replaceState({}, "", result.invitePath || `/?room=${result.code}`);
       setError("");
     });
   };
 
   const keyName = key => key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key;
 
-  const copyCode = async () => {
-    try { await navigator.clipboard.writeText(roomCode); setNotice("Room code copied."); }
-    catch { setNotice(`Room code: ${roomCode}`); }
+  const inviteUrl = roomCode ? `${window.location.origin}/?room=${roomCode}` : "";
+
+  const copyInviteLink = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setNotice("Invite link copied.");
+    } catch {
+      setNotice(inviteUrl);
+    }
   };
 
   if (!state || !roomCode || !me) {
@@ -110,9 +156,9 @@ function App() {
         <label>Your display name</label>
         <input value={name} onChange={e => setName(e.target.value)} maxLength={18} placeholder="e.g. Alex" />
         <button className="primary full" onClick={create}>Create a room</button>
-        <div className="or"><span>OR JOIN A ROOM</span></div>
-        <input value={roomInput} onChange={e => setRoomInput(e.target.value.toUpperCase())} maxLength={5} placeholder="ROOM CODE" />
-        <button className="secondary full" onClick={join}>Join room</button>
+        <div className="or"><span>{inviteRoom ? `INVITED TO ROOM ${inviteRoom}` : "OR JOIN A ROOM"}</span></div>
+        <input value={roomInput} onChange={e => setRoomInput(e.target.value.toUpperCase())} maxLength={5} placeholder="ROOM CODE" readOnly={Boolean(inviteRoom)} />
+        <button className="secondary full" onClick={join}>{inviteRoom ? "Join invited room" : "Join room"}</button>
         {error && <p className="error">{error}</p>}
         <p className="tiny">2–40 players · Two copies of each number (0–9) · No one can see their own cards</p>
       </section>
@@ -122,7 +168,7 @@ function App() {
   return <main className="game-shell">
     <header className="topbar">
       <div className="brand"><span className="brand-mark">♠</span><span>TABLE<span className="muted">/</span>SLAP</span></div>
-      <div className="room-pill">ROOM <strong>{roomCode}</strong><button onClick={copyCode} aria-label="Copy room code">Copy</button></div>
+      <div className="room-pill">ROOM <strong>{roomCode}</strong><button onClick={copyInviteLink} aria-label="Copy invite link">Copy invite</button></div>
     </header>
 
     <div className="game-layout">
@@ -136,7 +182,7 @@ function App() {
         <div className="legend"><span className="dot"></span> Current turn</div>
       </aside>
 
-      <section className={`table-area ${feedback}`}>
+      <section className={`table-area ${feedback}`} style={{ "--feedback-duration": `${FEEDBACK_DURATION_MS}ms` }}>
         {feedback && <div className={`impact-overlay ${feedback}`} aria-live="assertive"><span>{feedback === "success" ? "SLAP WIN!" : "BAD SLAP!"}</span><small>{feedback === "success" ? "YOU CLAIMED THE PILE" : "PENALTY CARDS ADDED"}</small></div>}
         <div className="table-status">
           <span className={`status-dot ${state.status === "playing" ? "live" : ""}`}></span>
@@ -145,9 +191,9 @@ function App() {
 
         {state.status === "lobby" ? <div className="panel lobby-card">
           <p className="eyebrow">ROOM {roomCode}</p><h2>Waiting for players</h2>
-          <p className="sub">Share the room code. The host can start once at least two players have joined.</p>
+          <p className="sub">Share this invite link. Anyone who opens it can join this room.</p>
           <div className="big-code">{roomCode}</div>
-          <button className="secondary" onClick={copyCode}>Copy invite code</button>
+          <a className="invite-url" href={inviteUrl}>{inviteUrl}</a><button className="secondary" onClick={copyInviteLink}>Copy invite link</button>
           {isHost ? <button className="primary" disabled={state.players.length < 2} onClick={() => act("startGame")}>Start game</button> : <p className="tiny">Waiting for the host to start…</p>}
         </div> : <>
           <div className={`middle-pile ${feedback}`}>
