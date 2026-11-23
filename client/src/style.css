@@ -152,10 +152,16 @@ button:disabled,.primary:disabled,.slap-btn:disabled{background:#454a45!importan
 .game-stage{min-width:0;display:flex;flex-direction:column;gap:16px}
 .arena-heading{display:flex;align-items:center;justify-content:space-between;padding:2px 8px}
 .arena-heading h2{font-size:20px;margin:2px 0}
-.arena{position:relative;isolation:isolate;width:100%;min-height:clamp(660px,82vh,900px);overflow:hidden;border:1px solid #344332;border-radius:28px;background:radial-gradient(ellipse at center,#29412c 0,#1a2a1d 42%,#111a13 78%);box-shadow:inset 0 0 100px #0008,0 20px 60px #0005}
+.arena{position:relative;isolation:isolate;width:100%;min-height:clamp(620px,76vh,820px);overflow:hidden;border:1px solid #344332;border-radius:28px;background:radial-gradient(ellipse at center,#29412c 0,#1a2a1d 42%,#111a13 78%);box-shadow:inset 0 0 100px #0008,0 20px 60px #0005}
 .arena:before{content:"";position:absolute;inset:13%;border:2px solid #76905a33;border-radius:50%;box-shadow:0 0 0 22px #a6c47a08,0 0 0 46px #a6c47a06,inset 0 0 50px #0005;pointer-events:none}
 .arena:after{content:"";position:absolute;inset:23%;border:1px dashed #a9c48b26;border-radius:50%;pointer-events:none}
-.arena-player{--seat-radius:clamp(220px,29vh,310px);position:absolute;z-index:3;top:50%;left:50%;width:var(--seat-width,clamp(68px,8vw,112px));display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;transform:rotate(var(--seat-angle)) translateY(calc(-1 * var(--seat-radius))) rotate(calc(-1 * var(--seat-angle)));transform-origin:center}
+.arena-player{--seat-radius:clamp(220px,29vh,310px);position:absolute;z-index:3;top:50%;left:50%;width:var(--seat-width,76px);display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;transform:rotate(var(--seat-angle)) translateY(calc(-1 * var(--seat-radius))) rotate(calc(-1 * var(--seat-angle)));transform-origin:center}
+.arena-player .human-avatar{width:32px;height:32px}
+.arena-player .human-head{top:5px;width:10px;height:10px}
+.arena-player .human-body{bottom:4px;width:19px;height:11px}
+.arena-player>strong{font-size:9px}
+.arena-player .player-card-count{font-size:11px;padding:2px 5px}
+.arena-player .player-card-count small{font-size:7px}
 .arena-player>strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#e9efdf;text-shadow:0 2px 8px #000}
 .human-avatar{position:relative;width:48px;height:48px;border-radius:50%;background:linear-gradient(145deg,#d9f36a,#7b9b4e);border:2px solid #efffc0;box-shadow:0 5px 18px #0008;display:flex;align-items:center;justify-content:center}
 .human-head{position:absolute;top:8px;width:14px;height:14px;border-radius:50%;background:#233022}
@@ -166,22 +172,24 @@ button:disabled,.primary:disabled,.slap-btn:disabled{background:#454a45!importan
 .player-card-count{display:flex;align-items:center;gap:3px;padding:3px 7px;border-radius:8px;background:#0d130f;border:1px solid #526348;color:#d9f36a;font:700 13px 'DM Mono',monospace;box-shadow:0 3px 8px #0008}
 .player-card-count small{font:8px 'DM Mono',monospace;color:#9da99a}
 .turn-indicator{font:8px 'DM Mono',monospace;letter-spacing:.12em;color:#d9f36a}
-.middle-pile.compact-pile{position:absolute;z-index:4;left:50%;top:50%;transform:translate(-50%,-50%);width:clamp(190px,24vw,270px);min-height:230px;padding:14px 14px 12px;border:1px solid #78916b;border-radius:20px;background:linear-gradient(145deg,#1b261d,#101811);box-shadow:0 15px 45px #000b,inset 0 0 35px #a8c48a0b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.middle-pile.compact-pile{position:absolute;z-index:4;left:50%;top:50%;transform:translate(-50%,-50%);width:clamp(164px,19vw,210px);min-height:190px;padding:10px 12px;border:1px solid #78916b;border-radius:20px;background:linear-gradient(145deg,#1b261d,#101811);box-shadow:0 15px 45px #000b,inset 0 0 35px #a8c48a0b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
 .compact-pile .pile-label{font-size:9px;white-space:nowrap}
 .compact-pile .card-fan{height:112px;margin:4px 0;display:flex;align-items:center;justify-content:center}
-.compact-card.playing-card{width:66px;height:96px;margin-left:-22px;border-width:3px;border-radius:9px;padding:5px;font-size:34px;box-shadow:0 8px 20px #0009}
+.compact-card.playing-card{width:54px;height:78px;margin-left:-18px;border-width:2px;border-radius:8px;padding:4px;font-size:28px;box-shadow:0 8px 20px #0009}
 .compact-card:first-child{margin-left:0}
 .compact-pile .pile-total{font-size:21px;line-height:1}
 .compact-pile .pile-total small{font-size:8px}
 .compact-pile .empty-pile{font-size:11px;color:#9da99a;padding:20px 0}
 .slap-fx-layer{position:absolute;z-index:8;inset:0;pointer-events:none;overflow:hidden}
-.slap-hand{position:absolute;left:50%;top:50%;font-size:clamp(90px,13vw,170px);line-height:1;filter:drop-shadow(0 12px 12px #000b);transform-origin:center;animation:hand-slap 850ms cubic-bezier(.16,.85,.22,1.1) both}
+.slap-hand{position:absolute;left:50%;top:50%;font-size:clamp(150px,19vw,250px);line-height:1;filter:drop-shadow(0 12px 12px #000b);transform-origin:center;animation:hand-slap 850ms cubic-bezier(.16,.85,.22,1.1) both}
 .slap-hand.win{filter:drop-shadow(0 0 25px #d9f36a)}
 .slap-hand.penalty{filter:drop-shadow(0 0 25px #ff6459)}
-.flight-cards{position:absolute;left:50%;top:50%;width:46px;height:62px;transform:translate(-50%,-50%);z-index:7}
-.flight-cards span{position:absolute;left:var(--card-offset,0);top:var(--card-offset,0);display:grid;place-items:center;width:42px;height:58px;border:2px solid #f4efdf;border-radius:6px;background:#fff;color:#181818;font:800 25px 'DM Mono',monospace;box-shadow:0 6px 18px #0009;animation-delay:var(--flight-delay)}
-.win-flight span{animation:cards-to-winner 1000ms cubic-bezier(.2,.8,.2,1) both}
-.penalty-flight span{animation:cards-to-pile 720ms cubic-bezier(.2,.8,.2,1) both}
+.flight-cards{position:absolute;left:50%;top:50%;width:22px;height:32px;transform:translate(-50%,-50%);z-index:7}
+.flight-cards span{position:absolute;left:var(--card-offset,0);top:var(--card-offset,0);display:grid;place-items:center;width:22px;height:32px;border:1px solid #f4efdf;border-radius:4px;background:#fff;color:#181818;font:700 13px 'DM Mono',monospace;box-shadow:0 3px 9px #0008;animation-delay:var(--flight-delay)}
+.win-flight span{animation:cards-to-winner 850ms cubic-bezier(.2,.8,.2,1) both}
+.penalty-flight span{animation:cards-to-pile 600ms cubic-bezier(.2,.8,.2,1) both}
+.play-fx-layer{position:absolute;z-index:7;inset:0;pointer-events:none;overflow:hidden}
+.play-flight-card{position:absolute;left:50%;top:50%;display:grid;place-items:center;width:22px;height:32px;border:1px solid #f4efdf;border-radius:4px;background:#fff;color:#181818;font:700 13px 'DM Mono',monospace;box-shadow:0 3px 9px #0008;animation:cards-to-pile 500ms ease-out both}
 .slap-callout{position:absolute;left:50%;top:calc(50% + 100px);transform:translateX(-50%);padding:8px 14px;border-radius:999px;background:#101510ef;border:1px solid #d9f36a;color:#d9f36a;font:800 12px 'DM Mono',monospace;letter-spacing:.12em;white-space:nowrap;animation:callout-pop 900ms ease both}
 .slap-callout.penalty{border-color:#ff7065;color:#ff958c}
 .game-controls{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -199,5 +207,7 @@ button:disabled,.primary:disabled,.slap-btn:disabled{background:#454a45!importan
 @keyframes cards-to-winner{0%{transform:rotate(var(--flight-angle)) translateY(0) scale(1);opacity:1}100%{transform:rotate(var(--flight-angle)) translateY(-38vh) scale(.18);opacity:0}}
 @keyframes cards-to-pile{0%{transform:rotate(var(--flight-angle)) translateY(-36vh) scale(.85);opacity:0}20%{opacity:1}100%{transform:rotate(var(--flight-angle)) translateY(0) scale(1);opacity:0}}
 @keyframes callout-pop{0%{opacity:0;translate:0 18px;scale:.7}25%,75%{opacity:1;translate:0 0;scale:1}100%{opacity:0;translate:0 -10px;scale:.95}}
-@media(max-width:760px){.game-shell{padding:12px}.arena{min-height:650px}.arena-player{--seat-radius:clamp(205px,27vh,245px);width:64px}.human-avatar{width:38px;height:38px}.human-head{top:6px;width:12px;height:12px}.human-body{width:22px;height:13px;bottom:5px}.arena-player>strong{font-size:9px}.player-card-count{font-size:11px;padding:2px 5px}.player-card-count small{font-size:7px}.middle-pile.compact-pile{width:174px;min-height:200px;padding:10px}.compact-card.playing-card{width:54px;height:80px;font-size:27px;margin-left:-18px}.compact-pile .card-fan{height:90px}.game-controls{grid-template-columns:1fr}.game-controls .my-hand,.game-controls .slap-btn{min-height:92px}.arena-heading{align-items:flex-start;gap:8px}.arena-heading h2{font-size:16px}.table-status{font-size:9px}}
+@media(max-width:760px){.game-shell{padding:12px}.arena{min-height:620px}.arena-player{--seat-radius:clamp(125px,30vw,215px);width:58px}.arena-player .human-avatar{width:28px;height:28px}.arena-player .human-head{top:4px;width:9px;height:9px}.arena-player .human-body{width:17px;height:10px;bottom:3px}.arena-player>strong{font-size:8px}.arena-player .player-card-count{font-size:10px;padding:2px 4px}.arena-player .player-card-count small{font-size:6px}.middle-pile.compact-pile{width:156px;min-height:178px;padding:8px}.compact-card.playing-card{width:48px;height:70px;font-size:24px;margin-left:-16px}.compact-pile .card-fan{height:78px}.game-controls{grid-template-columns:1fr}.game-controls .my-hand,.game-controls .slap-btn{min-height:92px}.arena-heading{align-items:flex-start;gap:8px}.arena-heading h2{font-size:16px}.table-status{font-size:9px}}
+@media(min-width:761px) and (max-width:1050px){.arena-player{--seat-radius:clamp(230px,30vh,275px)}}
+@media(max-width:420px){.arena{min-height:560px}.middle-pile.compact-pile{width:144px;min-height:164px}.slap-hand{font-size:clamp(130px,40vw,180px)}}
 @media(prefers-reduced-motion:reduce){.arena-player.turn,.slap-hand,.flight-cards span,.slap-callout{animation-duration:1ms!important;animation-iteration-count:1!important}}
