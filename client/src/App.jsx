@@ -13,6 +13,7 @@ function App() {
   const [notice, setNotice] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [feedbackDuration, setFeedbackDuration] = useState(1600);
   const [keys, setKeys] = useState(() => {
     try { return JSON.parse(localStorage.getItem("ers-keys")) || { slap: " ", play: "Enter" }; }
     catch { return { slap: " ", play: "Enter" }; }
@@ -43,16 +44,35 @@ function App() {
 
   useEffect(() => {
     if (!feedback) return;
-    const timer = window.setTimeout(() => setFeedback(""), 1600);
+    const timer = window.setTimeout(() => setFeedback(""), feedbackDuration);
     return () => window.clearTimeout(timer);
-  }, [feedback]);
+  }, [feedback, feedbackDuration]);
 
   const playSound = correct => {
+    const fallbackDuration = correct ? 1541.224 : 1175.510;
     try {
       const sound = new Audio(correct ? "/sounds/slap-success.mp3" : "/sounds/slap-penalty.mp3");
       sound.volume = 1;
-      sound.play().catch(() => {});
-    } catch { /* Audio is optional. */ }
+      const startFeedback = () => {
+        const duration = Number.isFinite(sound.duration) ? sound.duration * 1000 : fallbackDuration;
+        setFeedbackDuration(duration);
+        setFeedback(correct ? "success" : "penalty");
+        sound.play().catch(() => {});
+      };
+      if (sound.readyState >= 1) {
+        startFeedback();
+      } else {
+        sound.addEventListener("loadedmetadata", startFeedback, { once: true });
+        sound.addEventListener("error", () => {
+          setFeedbackDuration(fallbackDuration);
+          setFeedback(correct ? "success" : "penalty");
+        }, { once: true });
+        sound.load();
+      }
+    } catch {
+      setFeedbackDuration(fallbackDuration);
+      setFeedback(correct ? "success" : "penalty");
+    }
   };
 
   const me = state?.players.find(p => p.id === socket.id);
@@ -69,7 +89,6 @@ function App() {
       if (!result?.ok) setError(result?.error || "Something went wrong.");
       else if (event === "slap") {
         setNotice(result.correct ? `Correct slap: ${result.pattern}!` : `Wrong slap: +${result.penalty} penalty cards.`);
-        setFeedback(result.correct ? "success" : "penalty");
         playSound(result.correct);
       }
     });
@@ -136,7 +155,7 @@ function App() {
         <div className="legend"><span className="dot"></span> Current turn</div>
       </aside>
 
-      <section className={`table-area ${feedback}`}>
+      <section className={`table-area ${feedback}`} style={{ "--feedback-duration": `${feedbackDuration}ms` }}>
         {feedback && <div className={`impact-overlay ${feedback}`} aria-live="assertive"><span>{feedback === "success" ? "SLAP WIN!" : "BAD SLAP!"}</span><small>{feedback === "success" ? "YOU CLAIMED THE PILE" : "PENALTY CARDS ADDED"}</small></div>}
         <div className="table-status">
           <span className={`status-dot ${state.status === "playing" ? "live" : ""}`}></span>

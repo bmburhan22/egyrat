@@ -135,3 +135,16 @@ button:disabled,.primary:disabled,.slap-btn:disabled{background:#454a45!importan
 @media(max-width:760px){.table-area{min-height:unset}.middle-pile{min-height:42vh;padding:20px 12px}.card-fan{height:clamp(180px,24vh,260px);gap:10px}.playing-card{width:clamp(100px,26vw,150px);height:clamp(150px,23vh,220px);font-size:clamp(68px,15vw,100px)}.playing-card.hidden-card{font-size:54px}.impact-overlay span{font-size:clamp(56px,16vw,100px)}}
 
 .sound-preview-link{display:inline-block;margin-top:8px;color:#d9f36a;font-size:11px;text-decoration:underline;text-underline-offset:3px}
+
+
+/* Keep every slap animation exactly as long as its corresponding audio file. */
+.table-area.success .middle-pile,
+.table-area.penalty .middle-pile,
+.impact-overlay,
+.impact-overlay span,
+.impact-overlay small,
+.impact-overlay.success::after,
+.impact-overlay.penalty::after {
+  animation-duration: var(--feedback-duration) !important;
+  animation-delay: 0ms !important;
+}
