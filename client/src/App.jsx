@@ -49,23 +49,18 @@ function App() {
 
   const playSound = correct => {
     try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      const context = new AudioContext();
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      oscillator.type = "sine"; oscillator.frequency.value = correct ? 880 : 180;
-      gain.gain.setValueAtTime(0.12, context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.22);
-      oscillator.connect(gain); gain.connect(context.destination);
-      oscillator.start(); oscillator.stop(context.currentTime + 0.22);
-      oscillator.onended = () => context.close();
+      const sound = new Audio(correct ? "/sounds/slap-success.mp3" : "/sounds/slap-penalty.mp3");
+      sound.volume = 1;
+      sound.play().catch(() => {});
     } catch { /* Audio is optional. */ }
   };
 
   const me = state?.players.find(p => p.id === socket.id);
   const isHost = state?.players[0]?.id === socket.id;
   const isMyTurn = state?.turnPlayerId === socket.id;
-  const winner = state?.players.find(p => p.id === state?.winnerId);\n  const canSlap = state?.status === "playing" && state.pile.length >= 2;\n  const canPlay = state?.status === "playing" && isMyTurn && state.myCards > 0;
+  const winner = state?.players.find(p => p.id === state?.winnerId);
+  const canSlap = state?.status === "playing" && state.pile.length >= 2;
+  const canPlay = state?.status === "playing" && isMyTurn && state.myCards > 0;
 
   const act = (event, payload = {}) => {
     setError("");
@@ -141,7 +136,8 @@ function App() {
         <div className="legend"><span className="dot"></span> Current turn</div>
       </aside>
 
-      <section className={`table-area ${feedback}`}>\n        {feedback && <div className={`impact-overlay ${feedback}`} aria-live="assertive"><span>{feedback === "success" ? "SLAP WIN!" : "BAD SLAP!"}</span><small>{feedback === "success" ? "YOU CLAIMED THE PILE" : "PENALTY CARDS ADDED"}</small></div>}
+      <section className={`table-area ${feedback}`}>
+        {feedback && <div className={`impact-overlay ${feedback}`} aria-live="assertive"><span>{feedback === "success" ? "SLAP WIN!" : "BAD SLAP!"}</span><small>{feedback === "success" ? "YOU CLAIMED THE PILE" : "PENALTY CARDS ADDED"}</small></div>}
         <div className="table-status">
           <span className={`status-dot ${state.status === "playing" ? "live" : ""}`}></span>
           {state.status === "lobby" ? "WAITING IN LOBBY" : state.status === "finished" ? "GAME OVER" : "GAME IN PROGRESS"}
