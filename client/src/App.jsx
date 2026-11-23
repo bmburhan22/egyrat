@@ -54,7 +54,6 @@ function App() {
   const [state, setState] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [showSettings, setShowSettings] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [slapFx, setSlapFx] = useState(null);
   const [playFx, setPlayFx] = useState(null);
@@ -143,7 +142,7 @@ function App() {
   const canSlap = state?.status === "playing" && state.myCards > 0 && state.pile.length >= 2;
   const canPlay = state?.status === "playing" && isMyTurn && state.myCards > 0;
   const seatAngle = index => state.players.length === 2
-    ? (index === 0 ? -90 : 90)
+    ? (index === 0 ? 180 : 0)
     : (360 / state.players.length) * index - 90;
   const slapPlayerIndex = slapFx ? state.players.findIndex(p => p.id === slapFx.playerId) : -1;
   const slapAngle = slapPlayerIndex >= 0 ? seatAngle(slapPlayerIndex) : -90;
@@ -235,20 +234,21 @@ function App() {
         <a className="invite-url" href={inviteUrl}>{inviteUrl}</a><button className="secondary" onClick={copyInviteLink}>Copy invite link</button>
         <div className="deck-setting">
           <label htmlFor="card-copies">Copies of each number (0–9)</label>
-          {isHost ? <select id="card-copies" value={state.cardCopies || 2} onChange={event => {
+          {isHost ? <select id="card-copies" value={state.cardCopies || 4} onChange={event => {
             const copies = Number(event.target.value);
             socket.emit("setCardCopies", { copies }, result => {
               if (!result?.ok) setError(result?.error || "Could not update deck settings.");
               else setError("");
             });
-          }}>{Array.from({ length: 8 }, (_, index) => index + 1).map(copies => <option key={copies} value={copies}>{copies} {copies === 1 ? "copy" : "copies"} · {copies * 10} cards</option>)}</select> : <p className="deck-setting-value">{state.cardCopies || 2} copies · {(state.cardCopies || 2) * 10} cards total</p>}
+          }}>{Array.from({ length: 8 }, (_, index) => index + 1).map(copies => <option key={copies} value={copies}>{copies} {copies === 1 ? "copy" : "copies"} · {copies * 10} cards</option>)}</select> : <p className="deck-setting-value">{state.cardCopies || 4} copies · {(state.cardCopies || 4) * 10} cards total</p>}
         </div>
-        {state.players.length > 10 * (state.cardCopies || 2) && <p className="error">Not enough cards for all players. Increase copies or remove players.</p>}
+        {state.players.length > 10 * (state.cardCopies || 4) && <p className="error">Not enough cards for all players. Increase copies or remove players.</p>}
         <div className="lobby-players">{state.players.map(p => <span key={p.id}>{p.name}</span>)}</div>
         {isHost ? <button className="primary" disabled={state.players.length < 2 || state.players.length > 10 * (state.cardCopies || 2)} onClick={() => act("startGame")}>Start game</button> : <p className="tiny">Waiting for the host to start…</p>}
       </div> : <>
-        <div className="arena-heading">
-          <div><p className="eyebrow">ROOM {roomCode}</p><h2>{state.status === "finished" ? "Round complete" : "Everyone around the table"}</h2></div>
+        <div className={`arena-heading ${state.status === "finished" ? "finished-heading" : ""}`}>
+          {state.status === "finished" && <div className="winner-banner">{winner ? `${winner.name} WINS!` : "GAME OVER"}</div>}
+          <div><p className="eyebrow">ROOM {roomCode}</p><h2>{state.status === "finished" ? "Round complete" : "Game in progress"}</h2></div>
           <div className="table-status"><span className={`status-dot ${state.status === "playing" ? "live" : ""}`}></span>{state.status === "finished" ? "GAME OVER" : "GAME IN PROGRESS"}</div>
         </div>
         <div className="arena" style={{ "--player-count": state.players.length }}>
@@ -264,7 +264,7 @@ function App() {
           <div className="middle-pile compact-pile">
             <div className="pile-label">MIDDLE DECK <span>{state.pile.length} cards</span></div>
             {state.pile.length ? <div className="card-fan compact-fan">
-              {state.pile.slice(-5).map((card, i) => <div className={`playing-card compact-card ${card.hidden ? "hidden-card" : ""}`} key={`${card.id || "hidden"}-${state.pile.length}-${i}`} style={{ transform: `rotate(${(i - 2) * 5}deg) translateY(${Math.abs(i - 2) * 2}px)` }}>
+              {state.pile.slice(-3).map((card, i) => <div className={`playing-card compact-card ${card.hidden ? "hidden-card" : ""}`} key={`${card.id || "hidden"}-${state.pile.length}-${i}`} style={{ transform: `rotate(${(i - 1) * 6}deg) translateY(${Math.abs(i - 1) * 3}px)` }}>
                 {card.hidden ? "?" : card.value}
               </div>)}
             </div> : <div className="empty-pile">Play begins here</div>}
@@ -280,21 +280,20 @@ function App() {
             <span className="play-flight-card">{playFx.value}</span>
           </div>}
         </div>
-        <div className="game-controls">
-          <div className="my-hand panel"><div><span className="eyebrow">YOUR HAND</span><h2>{state.myCards} <small>cards remaining</small></h2></div><div className="back-stack"><div></div><div></div><div></div></div>
-            <button className="primary play-btn" disabled={!canPlay} onClick={() => act("playCard")}>{state.myCards === 0 ? "YOU ARE OUT OF CARDS" : isMyTurn ? "PLAY A RANDOM CARD" : "WAIT FOR YOUR TURN"}</button>
-          </div>
-          <button className="slap-btn" disabled={!canSlap} onClick={() => act("slap")}><span>SLAP THE PILE</span><small>{state.myCards === 0 ? "You are out of cards" : state.pile.length < 2 ? "Need at least 2 cards in the pile" : "Claim the middle deck"}</small></button>
-        </div>
-        {state.status === "finished" && <div className="panel result"><h2>{winner ? `${winner.name} wins!` : "Game over"}</h2><p>{state.lastAction}</p></div>}
+        <aside className="action-rail panel">
+          <div className="rail-hand"><span className="eyebrow">YOUR HAND</span><strong>{state.myCards}</strong><small>cards remaining</small></div>
+          <button className="primary play-btn" disabled={!canPlay} onClick={() => act("playCard")}>{isMyTurn ? "PLAY CARD" : "WAIT TURN"}</button>
+          <button className="slap-btn" disabled={!canSlap} onClick={() => act("slap")}><span>SLAP</span><small>{state.myCards === 0 ? "No cards left" : state.pile.length < 2 ? "Need 2 cards in pile" : "Claim the pile"}</small></button>
+        </aside>
+        {state.status === "finished" && <div className="panel result"><p>{state.lastAction}</p></div>}
       </>}
       {state.lastAction && <div className="activity">{state.lastAction}</div>}
       {notice && <div className="notice">{notice}</div>}
       {error && <div className="error">{error}</div>}
     </section>
 
-    <section className="rules panel">
-      <div className="section-head"><span>QUICK RULES</span><button className="settings-toggle" onClick={() => setShowSettings(v => !v)}> {showSettings ? "Hide settings" : "Controls & settings"} </button></div>
+    <details className="rules panel">
+      <summary>Slap rules, controls & settings</summary>
       <div className="rule-grid">
         <div><b>1. Play</b><p>On your turn, play one random card. You cannot see your own cards.</p></div>
         <div><b>2. Watch</b><p>Everyone can see the face-up middle pile and spot a valid pattern.</p></div>
@@ -302,8 +301,8 @@ function App() {
         <div><b>4. Penalty</b><p>A wrong slap adds up to 2 face-up cards to the middle pile. They can be slapped immediately.</p></div>
       </div>
       <p className="patterns"><strong>Valid slaps:</strong> Doubles · Sandwich · Three consecutive numbers (ascending or descending, no wraparound) · Two cards adding up to 10.</p>
-      {showSettings && <div className="settings-row"><div><b>Keyboard shortcuts</b><p>Shortcuts are saved in this browser. Click a key and press its replacement.</p></div><button className="secondary" onClick={() => setRemapping("slap")}>Slap: {keyName(keys.slap)} {remapping === "slap" ? "— press key…" : ""}</button><button className="secondary" onClick={() => setRemapping("play")}>Play: {keyName(keys.play)} {remapping === "play" ? "— press key…" : ""}</button><button className="secondary" onClick={() => { const defaults = { slap: " ", play: "Enter" }; setKeys(defaults); localStorage.setItem("ers-keys", JSON.stringify(defaults)); setRemapping(""); }}>Reset</button></div>}
-    </section>
+      <div className="settings-row"><div><b>Keyboard shortcuts</b><p>Shortcuts are saved in this browser. Click a key and press its replacement.</p></div><button className="secondary" onClick={() => setRemapping("slap")}>Slap: {keyName(keys.slap)} {remapping === "slap" ? "— press key…" : ""}</button><button className="secondary" onClick={() => setRemapping("play")}>Play: {keyName(keys.play)} {remapping === "play" ? "— press key…" : ""}</button><button className="secondary" onClick={() => { const defaults = { slap: " ", play: "Enter" }; setKeys(defaults); localStorage.setItem("ers-keys", JSON.stringify(defaults)); setRemapping(""); }}>Reset</button></div>
+    </details>
   </main>;
 }
 
