@@ -65,7 +65,9 @@ function App() {
   const me = state?.players.find(p => p.id === socket.id);
   const isHost = state?.players[0]?.id === socket.id;
   const isMyTurn = state?.turnPlayerId === socket.id;
-  const winner = state?.players.find(p => p.id === state?.winnerId);\n  const canSlap = state?.status === "playing" && state.pile.length >= 2;\n  const canPlay = state?.status === "playing" && isMyTurn && state.myCards > 0;
+  const winner = state?.players.find(p => p.id === state?.winnerId);
+  const canSlap = state?.status === "playing" && state.pile.length >= 2;
+  const canPlay = state?.status === "playing" && isMyTurn && state.myCards > 0;
 
   const act = (event, payload = {}) => {
     setError("");
@@ -141,7 +143,8 @@ function App() {
         <div className="legend"><span className="dot"></span> Current turn</div>
       </aside>
 
-      <section className={`table-area ${feedback}`}>\n        {feedback && <div className={`impact-overlay ${feedback}`} aria-live="assertive"><span>{feedback === "success" ? "SLAP WIN!" : "BAD SLAP!"}</span><small>{feedback === "success" ? "YOU CLAIMED THE PILE" : "PENALTY CARDS ADDED"}</small></div>}
+      <section className={`table-area ${feedback}`}>
+        {feedback && <div className={`impact-overlay ${feedback}`} aria-live="assertive"><span>{feedback === "success" ? "SLAP WIN!" : "BAD SLAP!"}</span><small>{feedback === "success" ? "YOU CLAIMED THE PILE" : "PENALTY CARDS ADDED"}</small></div>}
         <div className="table-status">
           <span className={`status-dot ${state.status === "playing" ? "live" : ""}`}></span>
           {state.status === "lobby" ? "WAITING IN LOBBY" : state.status === "finished" ? "GAME OVER" : "GAME IN PROGRESS"}
