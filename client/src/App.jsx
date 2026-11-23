@@ -56,6 +56,7 @@ function App() {
   const [notice, setNotice] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [slapFx, setSlapFx] = useState(null);
   const [keys, setKeys] = useState(() => {
     try { return JSON.parse(localStorage.getItem("ers-keys")) || { slap: " ", play: "Enter" }; }
     catch { return { slap: " ", play: "Enter" }; }
@@ -89,6 +90,10 @@ function App() {
     const timer = window.setTimeout(() => setFeedback(""), FEEDBACK_DURATION_MS);
     return () => window.clearTimeout(timer);
   }, [feedback]);
+
+  useEffect(() => {
+    if (state?.lastSlap) setSlapFx(state.lastSlap);
+  }, [state?.lastSlap?.id]);
 
   useEffect(() => {
     if (!inviteRoom || !hasSavedPlayerName || !name.trim() || roomCode || inviteJoinAttempted) return;
@@ -132,6 +137,8 @@ function App() {
   const winner = state?.players.find(p => p.id === state?.winnerId);
   const canSlap = state?.status === "playing" && state.myCards > 0 && state.pile.length >= 2;
   const canPlay = state?.status === "playing" && isMyTurn && state.myCards > 0;
+  const slapPlayerIndex = slapFx ? state.players.findIndex(p => p.id === slapFx.playerId) : -1;
+  const slapAngle = slapPlayerIndex >= 0 ? (360 / state.players.length) * slapPlayerIndex - 90 : -90;
 
   const act = (event, payload = {}) => {
     if (event === "slap") unlockFeedbackAudio();
@@ -208,68 +215,68 @@ function App() {
       <div className="room-pill">ROOM <strong>{roomCode}</strong><button onClick={copyInviteLink} aria-label="Copy invite link">Copy invite</button></div>
     </header>
 
-    <div className="game-layout">
-      <aside className="sidebar panel">
-        <div className="section-head"><span>PLAYERS</span><span>{state.players.length}</span></div>
-        {state.players.map((p, i) => <div className={`player-row ${p.id === socket.id ? "self" : ""} ${p.id === state.turnPlayerId ? "turn" : ""}`} key={p.id}>
-          <div className="avatar">{p.name.slice(0,1).toUpperCase()}</div>
-          <div className="player-meta"><strong>{p.name}{p.id === socket.id ? " (You)" : ""}</strong><small>{p.count === 0 ? "Out of cards" : p.id === state.turnPlayerId ? "Playing next" : p.connected ? "In game" : "Disconnected"}</small></div>
-          <div className="count">{p.count}</div>
-        </div>)}
-        <div className="legend"><span className="dot"></span> Current turn</div>
-      </aside>
-
-      <section className={`table-area ${feedback}`} style={{ "--feedback-duration": `${FEEDBACK_DURATION_MS}ms` }}>
-        {feedback && <div className={`impact-overlay ${feedback}`} aria-live="assertive"><span>{feedback === "success" ? "SLAP WIN!" : "BAD SLAP!"}</span><small>{feedback === "success" ? "YOU CLAIMED THE PILE" : "PENALTY CARDS ADDED"}</small></div>}
-        <div className="table-status">
-          <span className={`status-dot ${state.status === "playing" ? "live" : ""}`}></span>
-          {state.status === "lobby" ? "WAITING IN LOBBY" : state.status === "finished" ? "GAME OVER" : "GAME IN PROGRESS"}
+    <section className="game-stage">
+      {state.status === "lobby" ? <div className="panel lobby-card">
+        <p className="eyebrow">ROOM {roomCode}</p><h2>Waiting for players</h2>
+        <p className="sub">Share this invite link. Anyone who opens it can join this room.</p>
+        <div className="big-code">{roomCode}</div>
+        <a className="invite-url" href={inviteUrl}>{inviteUrl}</a><button className="secondary" onClick={copyInviteLink}>Copy invite link</button>
+        <div className="deck-setting">
+          <label htmlFor="card-copies">Copies of each number (0–9)</label>
+          {isHost ? <select id="card-copies" value={state.cardCopies || 2} onChange={event => {
+            const copies = Number(event.target.value);
+            socket.emit("setCardCopies", { copies }, result => {
+              if (!result?.ok) setError(result?.error || "Could not update deck settings.");
+              else setError("");
+            });
+          }}>{Array.from({ length: 8 }, (_, index) => index + 1).map(copies => <option key={copies} value={copies}>{copies} {copies === 1 ? "copy" : "copies"} · {copies * 10} cards</option>)}</select> : <p className="deck-setting-value">{state.cardCopies || 2} copies · {(state.cardCopies || 2) * 10} cards total</p>}
         </div>
-
-        {state.status === "lobby" ? <div className="panel lobby-card">
-          <p className="eyebrow">ROOM {roomCode}</p><h2>Waiting for players</h2>
-          <p className="sub">Share this invite link. Anyone who opens it can join this room.</p>
-          <div className="big-code">{roomCode}</div>
-          <a className="invite-url" href={inviteUrl}>{inviteUrl}</a><button className="secondary" onClick={copyInviteLink}>Copy invite link</button>
-          <div className="deck-setting">
-            <label htmlFor="card-copies">Copies of each number (0–9)</label>
-            {isHost ? <select id="card-copies" value={state.cardCopies || 2} onChange={event => {
-              const copies = Number(event.target.value);
-              socket.emit("setCardCopies", { copies }, result => {
-                if (!result?.ok) setError(result?.error || "Could not update deck settings.");
-                else setError("");
-              });
-            }}>{Array.from({ length: 8 }, (_, index) => index + 1).map(copies => <option key={copies} value={copies}>{copies} {copies === 1 ? "copy" : "copies"} · {copies * 10} cards</option>)}</select> : <p className="deck-setting-value">{state.cardCopies || 2} copies · {(state.cardCopies || 2) * 10} cards total</p>}
-          </div>
-          {state.players.length > 10 * (state.cardCopies || 2) && <p className="error">Not enough cards for all players. Increase copies or remove players.</p>}
-          {isHost ? <button className="primary" disabled={state.players.length < 2 || state.players.length > 10 * (state.cardCopies || 2)} onClick={() => act("startGame")}>Start game</button> : <p className="tiny">Waiting for the host to start…</p>}
-        </div> : <>
-          <div className={`middle-pile ${feedback}`}>
+        {state.players.length > 10 * (state.cardCopies || 2) && <p className="error">Not enough cards for all players. Increase copies or remove players.</p>}
+        <div className="lobby-players">{state.players.map(p => <span key={p.id}>{p.name}</span>)}</div>
+        {isHost ? <button className="primary" disabled={state.players.length < 2 || state.players.length > 10 * (state.cardCopies || 2)} onClick={() => act("startGame")}>Start game</button> : <p className="tiny">Waiting for the host to start…</p>}
+      </div> : <>
+        <div className="arena-heading">
+          <div><p className="eyebrow">ROOM {roomCode}</p><h2>{state.status === "finished" ? "Round complete" : "Everyone around the table"}</h2></div>
+          <div className="table-status"><span className={`status-dot ${state.status === "playing" ? "live" : ""}`}></span>{state.status === "finished" ? "GAME OVER" : "GAME IN PROGRESS"}</div>
+        </div>
+        <div className="arena" style={{ "--player-count": state.players.length }}>
+          {state.players.map((p, i) => {
+            const angle = (360 / state.players.length) * i - 90;
+            return <div className={`arena-player ${p.id === socket.id ? "self" : ""} ${p.id === state.turnPlayerId ? "turn" : ""} ${!p.connected ? "disconnected" : ""}`} key={p.id} style={{ "--seat-angle": `${angle}deg`, "--seat-radius": `${Math.min(310, 180 + state.players.length * 4)}px`, "--seat-width": `${Math.max(44, 112 - state.players.length * 1.7)}px` }}>
+              <div className="human-avatar"><span className="human-head"></span><span className="human-body"></span></div>
+              <strong title={p.name}>{p.name}{p.id === socket.id ? " (You)" : ""}</strong>
+              <span className="player-card-count">{p.count}<small>CARDS</small></span>
+              {p.id === state.turnPlayerId && <span className="turn-indicator">TURN</span>}
+            </div>;
+          })}
+          <div className="middle-pile compact-pile">
             <div className="pile-label">MIDDLE DECK <span>{state.pile.length} cards</span></div>
-            {state.pile.length ? <div className="card-fan">
-              {state.pile.slice(-3).map((card, i) => <div className={`playing-card ${card.hidden ? "hidden-card" : ""}`} key={`${card.id || "hidden"}-${state.pile.length}-${i}`} style={{ transform: `rotate(${(i - 1) * 5}deg) translateY(${Math.abs(i - 1) * 3}px)` }}>
-                {card.hidden ? <span>?</span> : <span>{card.value}</span>}
+            {state.pile.length ? <div className="card-fan compact-fan">
+              {state.pile.slice(-5).map((card, i) => <div className={`playing-card compact-card ${card.hidden ? "hidden-card" : ""}`} key={`${card.id || "hidden"}-${state.pile.length}-${i}`} style={{ transform: `rotate(${(i - 2) * 5}deg) translateY(${Math.abs(i - 2) * 2}px)` }}>
+                {card.hidden ? "?" : card.value}
               </div>)}
-            </div> : <div className="empty-pile">Cards played will appear here</div>}
-            <div className="pile-total">{state.pile.length} <small>TOTAL CARDS</small></div>
+            </div> : <div className="empty-pile">Play begins here</div>}
+            <div className="pile-total">{state.pile.length}<small>TOTAL</small></div>
           </div>
-          <div className="my-hand panel">
-            <div><span className="eyebrow">YOUR HAND</span><h2>{state.myCards} <small>cards remaining</small></h2></div>
-            <div className="back-stack"><div></div><div></div><div></div></div>
-            <button className="primary play-btn" disabled={!canPlay} onClick={() => act("playCard")}>
-              {state.myCards === 0 ? "YOU ARE OUT OF CARDS" : isMyTurn ? "PLAY A RANDOM CARD" : "WAIT FOR YOUR TURN"}
-            </button>
+          {slapFx && <div className="slap-fx-layer" key={slapFx.id} style={{ "--flight-angle": `${slapAngle}deg` }}>
+            <div className={`slap-hand ${slapFx.type}`}>✋</div>
+            {slapFx.type === "penalty" && <div className="flight-cards penalty-flight">{(slapFx.cards || []).map((value, i) => <span key={i} style={{ "--flight-delay": `${i * 90}ms` }}>{value}</span>)}</div>}
+            {slapFx.type === "win" && <div className="flight-cards win-flight">{(slapFx.cards || []).map((value, i) => <span key={i} style={{ "--flight-delay": `${i * 10}ms`, "--card-offset": `${(i % 5 - 2) * 4}px` }}>{value}</span>)}</div>}
+            <div className={`slap-callout ${slapFx.type}`}>{slapFx.type === "win" ? "PILE CLAIMED" : "PENALTY CARDS"}</div>
+          </div>}
+        </div>
+        <div className="game-controls">
+          <div className="my-hand panel"><div><span className="eyebrow">YOUR HAND</span><h2>{state.myCards} <small>cards remaining</small></h2></div><div className="back-stack"><div></div><div></div><div></div></div>
+            <button className="primary play-btn" disabled={!canPlay} onClick={() => act("playCard")}>{state.myCards === 0 ? "YOU ARE OUT OF CARDS" : isMyTurn ? "PLAY A RANDOM CARD" : "WAIT FOR YOUR TURN"}</button>
           </div>
-          <button className="slap-btn" disabled={!canSlap} onClick={() => act("slap")}>
-            <span>SLAP THE PILE</span><small>{state.myCards === 0 ? "You are out of cards" : state.pile.length < 2 ? "Need at least 2 cards in the pile" : "Claim the middle deck"}</small>
-          </button>
-          {state.status === "finished" && <div className="panel result"><h2>{winner ? `${winner.name} wins!` : "Game over"}</h2><p>{state.lastAction}</p></div>}
-        </>}
-        {state.lastAction && <div className="activity">{state.lastAction}</div>}
-        {notice && <div className="notice">{notice}</div>}
-        {error && <div className="error">{error}</div>}
-      </section>
-    </div>
+          <button className="slap-btn" disabled={!canSlap} onClick={() => act("slap")}><span>SLAP THE PILE</span><small>{state.myCards === 0 ? "You are out of cards" : state.pile.length < 2 ? "Need at least 2 cards in the pile" : "Claim the middle deck"}</small></button>
+        </div>
+        {state.status === "finished" && <div className="panel result"><h2>{winner ? `${winner.name} wins!` : "Game over"}</h2><p>{state.lastAction}</p></div>}
+      </>}
+      {state.lastAction && <div className="activity">{state.lastAction}</div>}
+      {notice && <div className="notice">{notice}</div>}
+      {error && <div className="error">{error}</div>}
+    </section>
 
     <section className="rules panel">
       <div className="section-head"><span>QUICK RULES</span><button className="settings-toggle" onClick={() => setShowSettings(v => !v)}> {showSettings ? "Hide settings" : "Controls & settings"} </button></div>
@@ -277,7 +284,7 @@ function App() {
         <div><b>1. Play</b><p>On your turn, play one random card. You cannot see your own cards.</p></div>
         <div><b>2. Watch</b><p>Everyone can see the face-up middle pile and spot a valid pattern.</p></div>
         <div><b>3. Slap</b><p>Slap at any time. A correct slap wins the whole middle pile.</p></div>
-        <div><b>4. Penalty</b><p>A wrong slap adds up to 2 cards from your hand face-down to the middle pile.</p></div>
+        <div><b>4. Penalty</b><p>A wrong slap adds up to 2 face-up cards to the middle pile. They can be slapped immediately.</p></div>
       </div>
       <p className="patterns"><strong>Valid slaps:</strong> Doubles · Sandwich · Three consecutive numbers (ascending or descending, no wraparound) · Two cards adding up to 10.</p>
       {showSettings && <div className="settings-row"><div><b>Keyboard shortcuts</b><p>Shortcuts are saved in this browser. Click a key and press its replacement.</p></div><button className="secondary" onClick={() => setRemapping("slap")}>Slap: {keyName(keys.slap)} {remapping === "slap" ? "— press key…" : ""}</button><button className="secondary" onClick={() => setRemapping("play")}>Play: {keyName(keys.play)} {remapping === "play" ? "— press key…" : ""}</button><button className="secondary" onClick={() => { const defaults = { slap: " ", play: "Enter" }; setKeys(defaults); localStorage.setItem("ers-keys", JSON.stringify(defaults)); setRemapping(""); }}>Reset</button></div>}
