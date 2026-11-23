@@ -54,7 +54,6 @@ function App() {
   const [state, setState] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [showSettings, setShowSettings] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [slapFx, setSlapFx] = useState(null);
   const [playFx, setPlayFx] = useState(null);
