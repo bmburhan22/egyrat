@@ -5,24 +5,43 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 const FEEDBACK_DURATION_MS = 1000;
 const socket = io(SERVER_URL, { autoConnect: true });
 const AudioContextClass = typeof window !== "undefined" ? (window.AudioContext || window.webkitAudioContext) : null;
-const feedbackAudioContext = AudioContextClass ? new AudioContextClass() : null;
-const feedbackBuffersPromise = feedbackAudioContext
-  ? Promise.all([
+let feedbackAudioContext = null;
+let feedbackBuffersPromise = null;
+let feedbackAudioUnlockPromise = Promise.resolve();
+
+function unlockFeedbackAudio() {
+  if (!AudioContextClass) return;
+
+  // Create and resume the context inside a real user gesture. Creating it at
+  // module load can leave some browsers with a permanently suspended context.
+  if (!feedbackAudioContext) feedbackAudioContext = new AudioContextClass();
+
+  if (!feedbackBuffersPromise) {
+    feedbackBuffersPromise = Promise.all([
       ["success", "/sounds/slap-success.ogg"],
       ["penalty", "/sounds/slap-penalty.ogg"]
     ].map(async ([name, path]) => {
       const response = await fetch(path);
-      if (!response.ok) throw new Error(`Could not load ${path}`);
-      return [name, await feedbackAudioContext.decodeAudioData(await response.arrayBuffer())];
-    })).then(Object.fromEntries).catch(() => ({}))
-  : Promise.resolve({});
-
-let feedbackAudioUnlockPromise = Promise.resolve();
-
-function unlockFeedbackAudio() {
-  if (feedbackAudioContext && feedbackAudioContext.state !== "running") {
-    feedbackAudioUnlockPromise = feedbackAudioContext.resume().catch(() => {});
+      if (!response.ok) throw new Error(`Could not load ${path} (${response.status})`);
+      const data = await response.arrayBuffer();
+      return [name, await feedbackAudioContext.decodeAudioData(data)];
+    })).then(Object.fromEntries).catch(error => {
+      console.error("Could not load slap feedback audio:", error);
+      return {};
+    });
   }
+
+  if (feedbackAudioContext.state !== "running") {
+    feedbackAudioUnlockPromise = feedbackAudioContext.resume().catch(error => {
+      console.warn("Could not unlock slap feedback audio:", error);
+    });
+  }
+}
+
+// Unlock audio on the first interaction, before a slap acknowledgement arrives.
+if (typeof window !== "undefined") {
+  window.addEventListener("pointerdown", unlockFeedbackAudio, { once: true });
+  window.addEventListener("keydown", unlockFeedbackAudio, { once: true });
 }
 
 function App() {
@@ -91,14 +110,20 @@ function App() {
   }, [inviteRoom, hasSavedPlayerName, name, roomCode, inviteJoinAttempted]);
 
   const playSound = correct => {
+    if (!feedbackAudioContext || !feedbackBuffersPromise) return;
     Promise.all([feedbackBuffersPromise, feedbackAudioUnlockPromise]).then(([buffers]) => {
       const buffer = buffers[correct ? "success" : "penalty"];
-      if (!buffer || !feedbackAudioContext || feedbackAudioContext.state !== "running") return;
+      if (!buffer || feedbackAudioContext.state !== "running") {
+        console.warn("Slap feedback audio is unavailable or the audio context is not running.");
+        return;
+      }
       const source = feedbackAudioContext.createBufferSource();
       source.buffer = buffer;
+      source.playbackRate.value = buffer.duration / (FEEDBACK_DURATION_MS / 1000);
       source.connect(feedbackAudioContext.destination);
       source.start();
-    }).catch(() => { /* Audio is optional. */ });
+      source.stop(feedbackAudioContext.currentTime + FEEDBACK_DURATION_MS / 1000);
+    }).catch(error => console.error("Could not play slap feedback audio:", error));
   };
 
   const me = state?.players.find(p => p.id === socket.id);
