@@ -142,11 +142,11 @@ function App() {
   const canSlap = state?.status === "playing" && !state.transitioning && state.myCards > 0 && state.pile.length >= 2;
   const canPlay = state?.status === "playing" && !state.transitioning && isMyTurn && state.myCards > 0;
   const seatPosition = index => {
-    const angle = state.players.length === 2 ? index * 180 : (360 / state.players.length) * index - 90;
+    const angle = state.players.length === 2 ? index * 180 - 90 : (360 / state.players.length) * index - 90;
     const radians = angle * Math.PI / 180;
     return { "--seat-x": (Math.cos(radians) * 42) + "%", "--seat-y": (Math.sin(radians) * 39) + "%" };
   };
-  const seatAngle = index => state.players.length === 2 ? index * 180 : (360 / state.players.length) * index - 90;
+  const seatAngle = index => state.players.length === 2 ? index * 180 - 90 : (360 / state.players.length) * index - 90;
   const slapPlayerIndex = slapFx ? state.players.findIndex(p => p.id === slapFx.playerId) : -1;
   const slapAngle = slapPlayerIndex >= 0 ? seatAngle(slapPlayerIndex) : -90;
   const playPlayerIndex = playFx ? state.players.findIndex(p => p.id === playFx.playerId) : -1;
