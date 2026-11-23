@@ -69,7 +69,8 @@ function publicState(room, viewerId) {
     myCards: room.players.find(p => p.id === viewerId)?.cards.length ?? 0,
     winnerId: room.winnerId ?? null,
     lastAction: room.lastAction ?? null,
-    lastSlap: room.lastSlap ?? null
+    lastSlap: room.lastSlap ?? null,
+    lastPlay: room.lastPlay ?? null
   };
 }
 
@@ -154,7 +155,7 @@ io.on("connection", socket => {
     const player = { id: socket.id, name: cleanName, cards: [], connected: true };
     const room = {
       code, players: [player], pile: [], status: "lobby", cardCopies: DEFAULT_CARD_COPIES,
-      turnPlayerId: null, winnerId: null, lastAction: `${cleanName} created the room.`, lastSlap: null, actionSeq: 0
+      turnPlayerId: null, winnerId: null, lastAction: `${cleanName} created the room.`, lastSlap: null, lastPlay: null, actionSeq: 0
     };
     rooms.set(code, room);
     socket.join(code);
@@ -224,6 +225,8 @@ io.on("connection", socket => {
 
     const card = player.cards.pop();
     room.pile.push({ card, faceUp: true });
+    room.actionSeq = (room.actionSeq || 0) + 1;
+    room.lastPlay = { id: room.actionSeq, playerId: player.id, value: card.value };
     room.turnPlayerId = nextPlayer(room, player.id);
     room.lastAction = `${player.name} played a card.`;
     if (!finishIfNeeded(room) && !room.turnPlayerId) {
