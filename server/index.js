@@ -14,7 +14,7 @@ const io = new Server(server, {
 });
 
 const rooms = new Map();
-const DEFAULT_CARD_COPIES = 2;
+const DEFAULT_CARD_COPIES = 4;
 const MIN_CARD_COPIES = 1;
 const MAX_CARD_COPIES = 8;
 
