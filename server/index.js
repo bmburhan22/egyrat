@@ -57,6 +57,7 @@ function publicState(room, viewerId) {
   return {
     code: room.code,
     status: room.status,
+    transitioning: Boolean(room.transitioning),
     cardCopies: room.cardCopies,
     players: room.players.map(p => ({
       id: p.id,
@@ -155,7 +156,7 @@ io.on("connection", socket => {
     const player = { id: socket.id, name: cleanName, cards: [], connected: true };
     const room = {
       code, players: [player], pile: [], status: "lobby", cardCopies: DEFAULT_CARD_COPIES,
-      turnPlayerId: null, winnerId: null, lastAction: `${cleanName} created the room.`, lastSlap: null, lastPlay: null, actionSeq: 0
+      turnPlayerId: null, winnerId: null, transitioning: false, lastAction: `${cleanName} created the room.`, lastSlap: null, lastPlay: null, actionSeq: 0
     };
     rooms.set(code, room);
     socket.join(code);
@@ -220,6 +221,7 @@ io.on("connection", socket => {
     if (!found) return ack({ ok: false, error: "You are not in a room." });
     const { room, player } = found;
     if (room.status !== "playing") return ack({ ok: false, error: "Game is not in progress." });
+    if (room.transitioning) return ack({ ok: false, error: "Wait for the slap animation to finish." });
     if (room.turnPlayerId !== player.id) return ack({ ok: false, error: "It is not your turn." });
     if (!player.cards.length) return ack({ ok: false, error: "You are out of cards and cannot play." });
 
@@ -243,32 +245,45 @@ io.on("connection", socket => {
     if (!found) return ack({ ok: false, error: "You are not in a room." });
     const { room, player } = found;
     if (room.status !== "playing") return ack({ ok: false, error: "Game is not in progress." });
+    if (room.transitioning) return ack({ ok: false, error: "A slap is already being resolved." });
     if (player.cards.length === 0) return ack({ ok: false, error: "You are out of cards and cannot slap." });
 
     const pattern = hasValidSlap(room.pile);
-    if (pattern) {
-      const claimedCards = room.pile.map(entry => entry.card);
-      player.cards.push(...claimedCards);
-      room.actionSeq = (room.actionSeq || 0) + 1;
-      room.lastSlap = { id: room.actionSeq, type: "win", playerId: player.id, cardCount: claimedCards.length, cards: claimedCards.map(card => card.value) };
-      room.pile = [];
-      room.turnPlayerId = player.id;
-      room.lastAction = `${player.name} slapped correctly (${pattern}) and won the middle pile.`;
-      finishIfNeeded(room);
-      ack({ ok: true, correct: true, pattern });
-    } else {
-      const penalty = player.cards.splice(Math.max(0, player.cards.length - 2), 2);
-      room.pile.push(...penalty.map(card => ({ card, faceUp: true })));
-      room.actionSeq = (room.actionSeq || 0) + 1;
-      room.lastSlap = { id: room.actionSeq, type: "penalty", playerId: player.id, cards: penalty.map(card => card.value) };
-      room.lastAction = `${player.name} slapped incorrectly and added ${penalty.length} face-up penalty card(s) to the middle pile.`;
-      if (player.cards.length === 0 && room.turnPlayerId === player.id) {
-        room.turnPlayerId = nextPlayer(room, player.id);
-      }
-      finishIfNeeded(room);
-      ack({ ok: true, correct: false, penalty: penalty.length });
-    }
+    const claimedCards = pattern ? room.pile.map(entry => entry.card) : [];
+    const penaltyCount = pattern ? 0 : Math.min(2, player.cards.length);
+    const penaltyCards = pattern ? [] : player.cards.slice(-penaltyCount);
+    room.transitioning = true;
+    room.actionSeq = (room.actionSeq || 0) + 1;
+    room.lastSlap = pattern
+      ? { id: room.actionSeq, type: "win", playerId: player.id, cardCount: claimedCards.length, cards: claimedCards.map(card => card.value) }
+      : { id: room.actionSeq, type: "penalty", playerId: player.id, cards: penaltyCards.map(card => card.value) };
+    room.lastAction = pattern
+      ? player.name + " slapped correctly (" + pattern + ")."
+      : player.name + " slapped incorrectly.";
+    ack(pattern
+      ? { ok: true, correct: true, pattern }
+      : { ok: true, correct: false, penalty: penaltyCount });
     emitRoom(room);
+
+    // Keep the pile and player counts unchanged until the card-flight animation ends.
+    setTimeout(() => {
+      if (pattern) {
+        player.cards.push(...claimedCards);
+        room.pile = [];
+        room.turnPlayerId = player.id;
+        room.lastAction = player.name + " slapped correctly (" + pattern + ") and won the middle pile.";
+      } else {
+        const movedPenalty = player.cards.splice(Math.max(0, player.cards.length - penaltyCount), penaltyCount);
+        room.pile.push(...movedPenalty.map(card => ({ card, faceUp: true })));
+        room.lastAction = player.name + " slapped incorrectly and added " + movedPenalty.length + " face-up penalty card(s) to the middle pile.";
+        if (player.cards.length === 0 && room.turnPlayerId === player.id) {
+          room.turnPlayerId = nextPlayer(room, player.id);
+        }
+      }
+      room.transitioning = false;
+      finishIfNeeded(room);
+      emitRoom(room);
+    }, 1000);
   });
 
   socket.on("disconnect", () => {
