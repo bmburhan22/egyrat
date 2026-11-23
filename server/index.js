@@ -14,13 +14,14 @@ const io = new Server(server, {
 });
 
 const rooms = new Map();
-const CARD_COPIES = Math.max(1, Math.min(8, Number.parseInt(process.env.CARD_COPIES || "2", 10) || 2));
-const DECK_SIZE = 10 * CARD_COPIES;
+const DEFAULT_CARD_COPIES = 2;
+const MIN_CARD_COPIES = 1;
+const MAX_CARD_COPIES = 8;
 
-function makeDeck() {
-  return Array.from({ length: DECK_SIZE }, (_, index) => ({
+function makeDeck(cardCopies) {
+  return Array.from({ length: 10 * cardCopies }, (_, index) => ({
     id: `card-${index + 1}`,
-    value: Math.floor(index / CARD_COPIES)
+    value: Math.floor(index / cardCopies)
   }));
 }
 
@@ -56,6 +57,7 @@ function publicState(room, viewerId) {
   return {
     code: room.code,
     status: room.status,
+    cardCopies: room.cardCopies,
     players: room.players.map(p => ({
       id: p.id,
       name: p.name,
@@ -150,7 +152,7 @@ io.on("connection", socket => {
     do code = roomCode(); while (rooms.has(code));
     const player = { id: socket.id, name: cleanName, cards: [], connected: true };
     const room = {
-      code, players: [player], pile: [], status: "lobby",
+      code, players: [player], pile: [], status: "lobby", cardCopies: DEFAULT_CARD_COPIES,
       turnPlayerId: null, winnerId: null, lastAction: `${cleanName} created the room.`
     };
     rooms.set(code, room);
@@ -175,6 +177,20 @@ io.on("connection", socket => {
     emitRoom(room);
   });
 
+  socket.on("setCardCopies", ({ copies }, ack = () => {}) => {
+    const found = findRoomForSocket(socket.id);
+    if (!found) return ack({ ok: false, error: "Join a room first." });
+    const { room, player } = found;
+    if (room.players[0].id !== player.id) return ack({ ok: false, error: "Only the room host can change deck settings." });
+    if (room.status !== "lobby") return ack({ ok: false, error: "Deck settings are locked after the game starts." });
+    const parsed = Number(copies);
+    if (!Number.isInteger(parsed) || parsed < MIN_CARD_COPIES || parsed > MAX_CARD_COPIES) return ack({ ok: false, error: `Choose between ${MIN_CARD_COPIES} and ${MAX_CARD_COPIES} copies.` });
+    room.cardCopies = parsed;
+    room.lastAction = `${player.name} set ${parsed} copies of each number (${10 * parsed} cards total).`;
+    ack({ ok: true });
+    emitRoom(room);
+  });
+
   socket.on("startGame", (_payload, ack = () => {}) => {
     const found = findRoomForSocket(socket.id);
     if (!found) return ack({ ok: false, error: "Join a room first." });
@@ -182,8 +198,9 @@ io.on("connection", socket => {
     if (room.players[0].id !== player.id) return ack({ ok: false, error: "Only the room host can start." });
     if (room.status !== "lobby") return ack({ ok: false, error: "Game already started." });
     if (room.players.length < 2) return ack({ ok: false, error: "At least 2 players are required." });
+    if (room.players.length > 10 * room.cardCopies) return ack({ ok: false, error: `This deck has ${10 * room.cardCopies} cards. Increase copies or reduce the player count.` });
 
-    const deck = shuffle(makeDeck());
+    const deck = shuffle(makeDeck(room.cardCopies));
     room.players.forEach(p => { p.cards = []; });
     deck.forEach((card, i) => room.players[i % room.players.length].cards.push(card));
     room.players.forEach(p => { p.cards = shuffle(p.cards); });
