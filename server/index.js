@@ -68,7 +68,8 @@ function publicState(room, viewerId) {
     turnPlayerId: room.turnPlayerId,
     myCards: room.players.find(p => p.id === viewerId)?.cards.length ?? 0,
     winnerId: room.winnerId ?? null,
-    lastAction: room.lastAction ?? null
+    lastAction: room.lastAction ?? null,
+    lastSlap: room.lastSlap ?? null
   };
 }
 
@@ -153,7 +154,7 @@ io.on("connection", socket => {
     const player = { id: socket.id, name: cleanName, cards: [], connected: true };
     const room = {
       code, players: [player], pile: [], status: "lobby", cardCopies: DEFAULT_CARD_COPIES,
-      turnPlayerId: null, winnerId: null, lastAction: `${cleanName} created the room.`
+      turnPlayerId: null, winnerId: null, lastAction: `${cleanName} created the room.`, lastSlap: null, actionSeq: 0
     };
     rooms.set(code, room);
     socket.join(code);
@@ -243,7 +244,9 @@ io.on("connection", socket => {
 
     const pattern = hasValidSlap(room.pile);
     if (pattern) {
-      player.cards.push(...room.pile.map(entry => entry.card));
+      const claimedCards = room.pile.map(entry => entry.card);
+      player.cards.push(...claimedCards);
+      room.lastSlap = { id: ++room.actionSeq, type: "win", playerId: player.id, cardCount: claimedCards.length };
       room.pile = [];
       room.turnPlayerId = player.id;
       room.lastAction = `${player.name} slapped correctly (${pattern}) and won the middle pile.`;
@@ -251,8 +254,9 @@ io.on("connection", socket => {
       ack({ ok: true, correct: true, pattern });
     } else {
       const penalty = player.cards.splice(Math.max(0, player.cards.length - 2), 2);
-      room.pile.push(...penalty.map(card => ({ card, faceUp: false })));
-      room.lastAction = `${player.name} slapped incorrectly and added ${penalty.length} face-down penalty card(s) to the middle pile.`;
+      room.pile.push(...penalty.map(card => ({ card, faceUp: true })));
+      room.lastSlap = { id: ++room.actionSeq, type: "penalty", playerId: player.id, cards: penalty.map(card => card.value) };
+      room.lastAction = `${player.name} slapped incorrectly and added ${penalty.length} face-up penalty card(s) to the middle pile.`;
       if (player.cards.length === 0 && room.turnPlayerId === player.id) {
         room.turnPlayerId = nextPlayer(room, player.id);
       }
