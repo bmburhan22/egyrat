@@ -4,16 +4,16 @@ A minimal real-time multiplayer web implementation using React, Node.js, Express
 
 ## Included rules
 
-- 2–40 players per room (the 40-card number deck limits the maximum).
+- 2–40 players per room; the selected deck must contain at least one card per player.
 - Host creates a room and shares its 5-character code.
 - Host starts the game once at least two players have joined.
 - Uses numbered cards 0–9. The host chooses 1–8 copies of each number in the lobby (2 by default), creating a 10–80 card deck.
 - Cards are shuffled and dealt evenly. Any remainder is dealt one at a time from the start of the player order.
 - On a player's turn, the server randomly plays the top card from their hand. The player only sees their remaining card count.
 - All players see the face-up middle pile.
-- Any player can slap at any time.
-- Valid patterns: doubles (last two values match), sandwich (first and third of the last three values match), three consecutive values (ascending or descending), and same colour on the last two cards.
-- A correct slap awards the entire middle pile to the player and makes them the next player to play. Valid patterns include doubles, sandwich, three consecutive numbers, and two cards summing to 10.
+- Any player with cards can slap at any time.
+- Valid patterns: doubles, sandwich, three consecutive values (ascending or descending), and two cards summing to 10.
+- A correct slap awards the entire middle pile to the player and makes them the next player to play.
 - An incorrect slap adds up to two cards from that player's hand face-down to the middle pile. If they have fewer than two cards, they pay what they have.
 - Face-down penalty cards break the visible pattern sequence.
 - The server validates turns and slaps; clients never receive their own hidden cards.
