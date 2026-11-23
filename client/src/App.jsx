@@ -254,7 +254,7 @@ function App() {
         <div className="arena" style={{ "--player-count": state.players.length }}>
           {state.players.map((p, i) => {
             const angle = seatAngle(i);
-            return <div className={`arena-player ${p.id === socket.id ? "self" : ""} ${p.id === state.turnPlayerId ? "turn" : ""} ${!p.connected ? "disconnected" : ""}`} key={p.id} style={{ "--seat-angle": `${angle}deg`, "--seat-radius": `${Math.min(310, 180 + state.players.length * 4)}px`, "--seat-width": `${Math.max(44, 112 - state.players.length * 1.7)}px` }}>
+            return <div className={`arena-player ${p.id === socket.id ? "self" : ""} ${p.id === state.turnPlayerId ? "turn" : ""} ${!p.connected ? "disconnected" : ""}`} key={p.id} style={{ "--seat-angle": `${angle}deg` }}>
               <div className="human-avatar"><span className="human-head"></span><span className="human-body"></span></div>
               <strong title={p.name}>{p.name}{p.id === socket.id ? " (You)" : ""}</strong>
               <span className="player-card-count">{p.count}<small>CARDS</small></span>
