@@ -261,7 +261,7 @@ function App() {
           {slapFx && <div className="slap-fx-layer" key={slapFx.id} style={{ "--flight-angle": `${slapAngle}deg` }}>
             <div className={`slap-hand ${slapFx.type}`}>✋</div>
             {slapFx.type === "penalty" && <div className="flight-cards penalty-flight">{(slapFx.cards || []).map((value, i) => <span key={i} style={{ "--flight-delay": `${i * 90}ms` }}>{value}</span>)}</div>}
-            {slapFx.type === "win" && <div className="flight-cards win-flight">{Array.from({ length: Math.min(slapFx.cardCount || 0, 14) }, (_, i) => <span key={i} style={{ "--flight-delay": `${i * 35}ms` }}>♠</span>)}</div>}
+            {slapFx.type === "win" && <div className="flight-cards win-flight">{(slapFx.cards || []).map((value, i) => <span key={i} style={{ "--flight-delay": `${i * 10}ms`, "--card-offset": `${(i % 5 - 2) * 4}px` }}>{value}</span>)}</div>}
             <div className={`slap-callout ${slapFx.type}`}>{slapFx.type === "win" ? "PILE CLAIMED" : "PENALTY CARDS"}</div>
           </div>}
         </div>

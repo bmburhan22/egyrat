@@ -246,7 +246,8 @@ io.on("connection", socket => {
     if (pattern) {
       const claimedCards = room.pile.map(entry => entry.card);
       player.cards.push(...claimedCards);
-      room.lastSlap = { id: ++room.actionSeq, type: "win", playerId: player.id, cardCount: claimedCards.length };
+      room.actionSeq = (room.actionSeq || 0) + 1;
+      room.lastSlap = { id: room.actionSeq, type: "win", playerId: player.id, cardCount: claimedCards.length, cards: claimedCards.map(card => card.value) };
       room.pile = [];
       room.turnPlayerId = player.id;
       room.lastAction = `${player.name} slapped correctly (${pattern}) and won the middle pile.`;
@@ -255,7 +256,8 @@ io.on("connection", socket => {
     } else {
       const penalty = player.cards.splice(Math.max(0, player.cards.length - 2), 2);
       room.pile.push(...penalty.map(card => ({ card, faceUp: true })));
-      room.lastSlap = { id: ++room.actionSeq, type: "penalty", playerId: player.id, cards: penalty.map(card => card.value) };
+      room.actionSeq = (room.actionSeq || 0) + 1;
+      room.lastSlap = { id: room.actionSeq, type: "penalty", playerId: player.id, cards: penalty.map(card => card.value) };
       room.lastAction = `${player.name} slapped incorrectly and added ${penalty.length} face-up penalty card(s) to the middle pile.`;
       if (player.cards.length === 0 && room.turnPlayerId === player.id) {
         room.turnPlayerId = nextPlayer(room, player.id);
