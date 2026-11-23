@@ -1,0 +1,86 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&display=swap');
+:root{font-family:'DM Sans',sans-serif;color:#f5f3ed;background:#101310;font-synthesis:none}
+*{box-sizing:border-box}
+body{margin:0;min-width:320px;background:radial-gradient(ellipse at 50% 0%,#202a21 0,#101310 55%) fixed}
+button,input{font:inherit}
+button{cursor:pointer;border:0;transition:.15s}
+button:disabled{opacity:.42;cursor:not-allowed}
+.landing{min-height:100vh;display:grid;place-items:center;padding:24px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.12em;font-size:13px}
+.brand-mark{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#d9f36a;color:#15180f;font-size:18px}
+.muted{color:#d9f36a}
+.landing>.brand{position:absolute;top:28px;left:32px}
+.panel{background:#191e19;border:1px solid #30392f;border-radius:18px;box-shadow:0 18px 50px #0003}
+.landing-panel{width:min(100%,420px);padding:32px;display:flex;flex-direction:column;gap:12px}
+.eyebrow,.section-head,.pile-label,.table-status{font:500 11px 'DM Mono',monospace;letter-spacing:.12em;color:#9da79a}
+h1{font-size:32px;line-height:1.08;margin:0}
+h2{font-size:22px;margin:5px 0}
+.sub{color:#aab2a5;line-height:1.5;font-size:14px;margin:0 0 10px}
+label{font-size:12px;color:#b9c1b5}
+input{width:100%;border:1px solid #3b4639;background:#111611;color:white;border-radius:10px;padding:13px 14px;outline:none}
+input:focus{border-color:#d9f36a}
+.primary,.secondary{padding:13px 18px;border-radius:10px;font-weight:700}
+.primary{background:#d9f36a;color:#171b12}
+.primary:hover{background:#e5ff83}
+.secondary{background:#2b342a;color:#e6ebdf;border:1px solid #46513f}
+.full{width:100%}
+.or{display:flex;align-items:center;gap:12px;color:#778174;font:10px 'DM Mono',monospace;margin:8px 0}
+.or:before,.or:after{content:"";height:1px;background:#333d32;flex:1}
+.tiny{font-size:11px;color:#899386;text-align:center;margin:8px 0 0}
+.error{color:#ff8e83;font-size:12px;margin:8px 0}
+.game-shell{max-width:1180px;margin:auto;padding:24px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.room-pill{display:flex;align-items:center;gap:12px;background:#1c241c;border:1px solid #354031;padding:8px 12px;border-radius:10px;color:#aeb8a8;font:11px 'DM Mono',monospace}
+.room-pill strong{color:#e9f0dc;font-size:14px;letter-spacing:.12em}
+.room-pill button{background:transparent;color:#d9f36a;font-size:11px}
+.game-layout{display:grid;grid-template-columns:260px 1fr;gap:18px}
+.sidebar{padding:18px;height:max-content}
+.section-head{display:flex;justify-content:space-between;margin-bottom:16px}
+.player-row{display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:11px;margin:3px 0}
+.player-row.turn{background:#293323;outline:1px solid #56653d}
+.avatar{width:34px;height:34px;border-radius:10px;background:#313b30;display:grid;place-items:center;color:#d9f36a;font-weight:800}
+.player-meta{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+.player-meta strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player-meta small{font-size:10px;color:#879283}
+.count{font:500 18px 'DM Mono',monospace}
+.legend{margin-top:14px;color:#889284;font-size:10px}
+.dot,.status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#d9f36a;margin-right:7px}
+.table-area{min-height:520px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:18px}
+.table-status{align-self:flex-start}
+.status-dot{background:#6d7868}.status-dot.live{background:#d9f36a;box-shadow:0 0 10px #d9f36a88}
+.middle-pile{width:min(100%,550px);min-height:260px;background:radial-gradient(ellipse,#283528,#1a241b);border:1px solid #3a4938;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;padding:22px}
+.pile-label{width:100%;display:flex;justify-content:space-between}
+.pile-label span{color:#d9f36a}
+.card-fan{display:flex;justify-content:center;align-items:center;height:125px;margin:18px 0 8px}
+.playing-card{width:70px;height:102px;border-radius:9px;border:3px solid #f5f0e4;background:#f5f0e4;color:#181818;display:flex;flex-direction:column;justify-content:space-between;padding:8px;font-size:28px;font-weight:800;margin-left:-20px;box-shadow:0 5px 15px #0006}
+.playing-card:first-child{margin-left:0}
+.playing-card small{font:700 10px 'DM Mono',monospace;align-self:flex-end}
+.playing-card.red{color:#c63732}.playing-card.blue{color:#2765a6}.playing-card.green{color:#287c4b}.playing-card.yellow{color:#aa8518}
+.empty-pile{height:130px;display:grid;place-items:center;color:#788574;font-size:12px}
+.pile-total{font:500 22px 'DM Mono',monospace}
+.pile-total small{font-size:9px;color:#91a08d;margin-left:7px}
+.my-hand{width:min(100%,550px);padding:16px 18px;display:flex;align-items:center;gap:18px;position:relative;overflow:hidden}
+.my-hand h2{font:500 24px 'DM Mono',monospace}
+.my-hand h2 small{font:12px 'DM Sans',sans-serif;color:#a2ad9c}
+.back-stack{display:flex;margin-left:auto;min-width:66px}
+.back-stack div{width:31px;height:45px;border-radius:5px;border:2px solid #d9f36a;background:repeating-linear-gradient(45deg,#293923,#293923 4px,#3d5332 4px,#3d5332 8px);margin-left:-12px}
+.play-btn{white-space:nowrap;font-size:11px}
+.slap-btn{width:min(100%,550px);padding:16px;border-radius:14px;background:#c83c32;color:white;display:flex;flex-direction:column;align-items:center;gap:3px;box-shadow:0 5px 0 #85251f}
+.slap-btn:hover{background:#e34b3f;transform:translateY(-1px)}
+.slap-btn span{font-weight:900;font-size:18px;letter-spacing:.08em}
+.slap-btn small{font-size:10px;color:#ffe0dc}
+.activity,.notice{font-size:11px;color:#aab6a5;text-align:center;min-height:15px}
+.notice{color:#d9f36a}
+.lobby-card{width:min(100%,480px);padding:30px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px}
+.big-code{font:500 38px 'DM Mono',monospace;letter-spacing:.2em;color:#d9f36a;padding:10px}
+.lobby-card .primary:disabled{opacity:.35}
+.rules{margin-top:18px;padding:18px}
+.rule-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.rule-grid b{font-size:12px}.rule-grid p{font-size:11px;color:#9da99a;line-height:1.45;margin:5px 0}
+.patterns{border-top:1px solid #30392f;padding-top:12px;font-size:11px;color:#aeb9a8;margin:14px 0 0}
+.patterns strong{color:#e7eedf}
+.result{padding:14px 20px;text-align:center;width:min(100%,550px)}
+.result p{color:#aab2a5;font-size:12px}
+@media(max-width:760px){.game-shell{padding:16px}.game-layout{grid-template-columns:1fr}.sidebar{order:2}.table-area{padding:8px 0;min-height:450px}.rule-grid{grid-template-columns:repeat(2,1fr)}.my-hand{flex-wrap:wrap}.play-btn{width:100%}.topbar{gap:10px}.room-pill{gap:6px}.landing>.brand{left:20px;top:20px}}
+
+.playing-card.hidden-card{background:repeating-linear-gradient(45deg,#293923,#293923 5px,#3d5332 5px,#3d5332 10px);border-color:#d9f36a;color:#d9f36a}
