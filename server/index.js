@@ -38,6 +38,20 @@ function roomCode() {
   return Array.from({ length: 5 }, () => chars[randomInt(chars.length)]).join("");
 }
 
+function normalizeRoomCode(value) {
+  const raw = String(value || "").trim();
+  try {
+    const fromUrl = new URL(raw).searchParams.get("room");
+    if (fromUrl) return fromUrl.trim().toUpperCase();
+  } catch { /* A plain room code is also valid. */ }
+  if (raw.includes("room=")) {
+    const query = raw.slice(raw.indexOf("room="));
+    const fromQuery = new URLSearchParams(query).get("room");
+    if (fromQuery) return fromQuery.trim().toUpperCase();
+  }
+  return raw.toUpperCase();
+}
+
 function publicState(room, viewerId) {
   return {
     code: room.code,
@@ -132,12 +146,12 @@ io.on("connection", socket => {
     };
     rooms.set(code, room);
     socket.join(code);
-    ack({ ok: true, code });
+    ack({ ok: true, code, invitePath: `/?room=${code}` });
     emitRoom(room);
   });
 
   socket.on("joinRoom", ({ code, name }, ack = () => {}) => {
-    const room = rooms.get(String(code || "").trim().toUpperCase());
+    const room = rooms.get(normalizeRoomCode(code));
     if (!room) return ack({ ok: false, error: "Room not found." });
     if (room.status !== "lobby") return ack({ ok: false, error: "Game has already started." });
     if (room.players.length >= 40) return ack({ ok: false, error: "Room is full (40-player limit)." });
@@ -147,7 +161,7 @@ io.on("connection", socket => {
     }
     room.players.push({ id: socket.id, name: cleanName, cards: [], connected: true });
     socket.join(room.code);
-    ack({ ok: true, code: room.code });
+    ack({ ok: true, code: room.code, invitePath: `/?room=${room.code}` });
     room.lastAction = `${cleanName} joined.`;
     emitRoom(room);
   });

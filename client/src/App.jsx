@@ -116,7 +116,7 @@ function App() {
       if (!result?.ok) return setError(result?.error || "Could not create room.");
       localStorage.setItem("ers-player-name", name.trim());
       setRoomCode(result.code);
-      window.history.replaceState({}, "", `/?room=${result.code}`);
+      window.history.replaceState({}, "", result.invitePath || `/?room=${result.code}`);
       setError("");
     });
   };
@@ -128,7 +128,7 @@ function App() {
       if (!result?.ok) return setError(result?.error || "Could not join room.");
       localStorage.setItem("ers-player-name", cleanName);
       setRoomCode(result.code);
-      window.history.replaceState({}, "", `/?room=${result.code}`);
+      window.history.replaceState({}, "", result.invitePath || `/?room=${result.code}`);
       setError("");
     });
   };
