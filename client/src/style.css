@@ -102,3 +102,36 @@ input:focus{border-color:#d9f36a}
 .settings-row p{font-size:11px;color:#9da99a;margin:4px 0}
 .settings-row .secondary{font-size:11px;padding:9px 11px}
 @media(max-width:760px){.playing-card{width:88px;height:128px;font-size:54px}.card-fan{height:155px}}
+
+/* Bigger table and high-impact slap feedback */
+.table-area{min-height:calc(100vh - 150px);gap:20px}
+.middle-pile{width:min(100%,900px);min-height:48vh;padding:30px 34px;border-width:2px;box-shadow:0 18px 60px #0008,inset 0 0 70px #8fb56a12}
+.card-fan{height:clamp(220px,30vh,360px);gap:18px}
+.playing-card{width:clamp(145px,16vw,220px);height:clamp(210px,30vh,320px);margin-left:0;border-width:5px;border-radius:18px;font-size:clamp(88px,10vw,140px);box-shadow:0 18px 40px #000b}
+.playing-card.hidden-card{font-size:clamp(65px,7vw,100px)}
+.pile-total{font-size:30px}
+.pile-total small{font-size:11px}
+.my-hand,.slap-btn{width:min(100%,900px)}
+button:disabled,.primary:disabled,.slap-btn:disabled{background:#454a45!important;color:#929892!important;border-color:#565d56!important;box-shadow:none!important;opacity:1!important;filter:grayscale(1);transform:none!important;cursor:not-allowed}
+.play-btn:disabled{background:#454a45!important;color:#929892!important}
+.slap-btn:disabled small{color:#b0b5b0}
+.table-area.success .middle-pile{animation:table-win .95s cubic-bezier(.2,.8,.2,1)}
+.table-area.penalty .middle-pile{animation:table-loss .9s ease}
+.impact-overlay{position:fixed;inset:0;z-index:50;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;backdrop-filter:blur(2px)}
+.impact-overlay span{font:1000 clamp(58px,12vw,150px)/.9 'DM Sans',sans-serif;letter-spacing:-.07em;color:#fff;text-shadow:0 8px 0 #111,0 0 28px currentColor,0 0 80px currentColor;transform:scale(.2);animation:impact-word .95s cubic-bezier(.12,.9,.18,1.2) forwards}
+.impact-overlay small{margin-top:22px;font:800 clamp(14px,2vw,24px) 'DM Mono',monospace;letter-spacing:.2em;color:#fff;text-shadow:0 3px 14px #000;animation:impact-sub .5s .2s both}
+.impact-overlay.success{background:radial-gradient(circle at center,#d9f36a55 0,transparent 55%);animation:flash-win 1.45s ease-out forwards}
+.impact-overlay.penalty{background:radial-gradient(circle at center,#f0443655 0,transparent 60%);animation:flash-loss 1.45s ease-out forwards}
+.impact-overlay.success span{color:#eaff9b}
+.impact-overlay.penalty span{color:#ff7065}
+.impact-overlay.success:after,.impact-overlay.penalty:after{content:"";position:absolute;inset:0;opacity:.55;background:repeating-conic-gradient(from 0deg at 50% 50%,transparent 0deg 9deg,#ffffff22 10deg 11deg,transparent 12deg 20deg);animation:burst-rays 1.2s ease-out forwards}
+@keyframes impact-word{0%{transform:scale(.2) rotate(-12deg);opacity:0}55%{transform:scale(1.18) rotate(3deg);opacity:1}75%{transform:scale(.94) rotate(-1deg)}100%{transform:scale(1);opacity:1}}
+@keyframes impact-sub{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes flash-win{0%,100%{opacity:0}12%,55%{opacity:1}70%{opacity:.45}}
+@keyframes flash-loss{0%,100%{opacity:0}10%,50%{opacity:1}65%{opacity:.5}}
+@keyframes burst-rays{from{transform:scale(.15) rotate(0);opacity:0}40%{opacity:.6}to{transform:scale(1.8) rotate(22deg);opacity:0}}
+@keyframes table-win{0%,100%{transform:scale(1)}25%{transform:scale(1.07) rotate(-1deg);border-color:#eaff9b;box-shadow:0 0 90px #d9f36a99}55%{transform:scale(1.025) rotate(1deg)}}
+@keyframes table-loss{0%,100%{transform:translateX(0)}15%,45%,75%{transform:translateX(-16px) rotate(-1deg);border-color:#ff7065;box-shadow:0 0 60px #f0443688}30%,60%,90%{transform:translateX(16px) rotate(1deg)}}
+@media(max-width:760px){.table-area{min-height:unset}.middle-pile{min-height:42vh;padding:20px 12px}.card-fan{height:clamp(180px,24vh,260px);gap:10px}.playing-card{width:clamp(100px,26vw,150px);height:clamp(150px,23vh,220px);font-size:clamp(68px,15vw,100px)}.playing-card.hidden-card{font-size:54px}.impact-overlay span{font-size:clamp(56px,16vw,100px)}}
+
+.sound-preview-link{display:inline-block;margin-top:8px;color:#d9f36a;font-size:11px;text-decoration:underline;text-underline-offset:3px}

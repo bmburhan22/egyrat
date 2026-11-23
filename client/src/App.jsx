@@ -43,7 +43,7 @@ function App() {
 
   useEffect(() => {
     if (!feedback) return;
-    const timer = window.setTimeout(() => setFeedback(""), 900);
+    const timer = window.setTimeout(() => setFeedback(""), 1600);
     return () => window.clearTimeout(timer);
   }, [feedback]);
 
@@ -65,7 +65,7 @@ function App() {
   const me = state?.players.find(p => p.id === socket.id);
   const isHost = state?.players[0]?.id === socket.id;
   const isMyTurn = state?.turnPlayerId === socket.id;
-  const winner = state?.players.find(p => p.id === state?.winnerId);
+  const winner = state?.players.find(p => p.id === state?.winnerId);\n  const canSlap = state?.status === "playing" && state.pile.length >= 2;\n  const canPlay = state?.status === "playing" && isMyTurn && state.myCards > 0;
 
   const act = (event, payload = {}) => {
     setError("");
@@ -141,7 +141,7 @@ function App() {
         <div className="legend"><span className="dot"></span> Current turn</div>
       </aside>
 
-      <section className="table-area">
+      <section className={`table-area ${feedback}`}>\n        {feedback && <div className={`impact-overlay ${feedback}`} aria-live="assertive"><span>{feedback === "success" ? "SLAP WIN!" : "BAD SLAP!"}</span><small>{feedback === "success" ? "YOU CLAIMED THE PILE" : "PENALTY CARDS ADDED"}</small></div>}
         <div className="table-status">
           <span className={`status-dot ${state.status === "playing" ? "live" : ""}`}></span>
           {state.status === "lobby" ? "WAITING IN LOBBY" : state.status === "finished" ? "GAME OVER" : "GAME IN PROGRESS"}
@@ -166,12 +166,12 @@ function App() {
           <div className="my-hand panel">
             <div><span className="eyebrow">YOUR HAND</span><h2>{state.myCards} <small>cards remaining</small></h2></div>
             <div className="back-stack"><div></div><div></div><div></div></div>
-            <button className="primary play-btn" disabled={!isMyTurn || state.myCards === 0 || state.status !== "playing"} onClick={() => act("playCard")}>
+            <button className="primary play-btn" disabled={!canPlay} onClick={() => act("playCard")}>
               {isMyTurn ? "PLAY A RANDOM CARD" : "WAIT FOR YOUR TURN"}
             </button>
           </div>
-          <button className="slap-btn" disabled={state.status !== "playing"} onClick={() => act("slap")}>
-            <span>SLAP THE PILE</span><small>Claim the middle deck</small>
+          <button className="slap-btn" disabled={!canSlap} onClick={() => act("slap")}>
+            <span>SLAP THE PILE</span><small>{state.pile.length < 2 ? "Need at least 2 cards in the pile" : "Claim the middle deck"}</small>
           </button>
           {state.status === "finished" && <div className="panel result"><h2>{winner ? `${winner.name} wins!` : "Game over"}</h2><p>{state.lastAction}</p></div>}
         </>}
@@ -190,7 +190,7 @@ function App() {
         <div><b>4. Penalty</b><p>A wrong slap adds up to 2 cards from your hand face-down to the middle pile.</p></div>
       </div>
       <p className="patterns"><strong>Valid slaps:</strong> Doubles · Sandwich · Three consecutive numbers (ascending or descending, no wraparound) · Two cards adding up to 10.</p>
-      {showSettings && <div className="settings-row"><div><b>Keyboard shortcuts</b><p>Shortcuts are saved in this browser. Click a key and press its replacement.</p></div><button className="secondary" onClick={() => setRemapping("slap")}>Slap: {keyName(keys.slap)} {remapping === "slap" ? "— press key…" : ""}</button><button className="secondary" onClick={() => setRemapping("play")}>Play: {keyName(keys.play)} {remapping === "play" ? "— press key…" : ""}</button><button className="secondary" onClick={() => { const defaults = { slap: " ", play: "Enter" }; setKeys(defaults); localStorage.setItem("ers-keys", JSON.stringify(defaults)); setRemapping(""); }}>Reset</button></div>}
+      {showSettings && <div className="settings-row"><div><b>Keyboard shortcuts</b><p>Shortcuts are saved in this browser. Click a key and press its replacement.</p><a className="sound-preview-link" href="https://pixabay.com/sound-effects/people-crowd-cheer-applause-victory-fanfare-clapping-236698/" target="_blank" rel="noreferrer">Preview crowd-cheer victory sound ↗</a></div><button className="secondary" onClick={() => setRemapping("slap")}>Slap: {keyName(keys.slap)} {remapping === "slap" ? "— press key…" : ""}</button><button className="secondary" onClick={() => setRemapping("play")}>Play: {keyName(keys.play)} {remapping === "play" ? "— press key…" : ""}</button><button className="secondary" onClick={() => { const defaults = { slap: " ", play: "Enter" }; setKeys(defaults); localStorage.setItem("ers-keys", JSON.stringify(defaults)); setRemapping(""); }}>Reset</button></div>}
     </section>
   </main>;
 }
