@@ -261,3 +261,35 @@ button:disabled,.primary:disabled,.slap-btn:disabled{background:#454a45!importan
 }
 
 @media(max-width:760px){.arena-player{--seat-radius:clamp(155px,46vw,180px)}}
+
+
+/* Responsive arena: player seats are positioned against the arena's own bounds. */
+.arena{min-height:clamp(560px,calc(100svh - 230px),900px);height:clamp(560px,calc(100svh - 230px),900px);overflow:hidden}
+.arena-player{--seat-width:clamp(58px,7vw,92px);top:calc(50% + var(--seat-y));left:calc(50% + var(--seat-x));width:var(--seat-width);transform:translate(-50%,-50%);gap:4px}
+.arena-player .human-avatar{width:clamp(28px,3vw,42px);height:clamp(28px,3vw,42px)}
+.arena-player .human-head{top:22%;width:30%;height:30%}
+.arena-player .human-body{bottom:12%;width:58%;height:32%}
+.arena-player>strong{max-width:100%;font-size:clamp(8px,.8vw,11px)}
+.arena-player .player-card-count{font-size:clamp(9px,.8vw,12px)}
+.middle-pile.compact-pile{width:min(48vw,560px);min-height:min(52vh,430px)}
+.compact-pile .card-fan{height:clamp(150px,26vh,300px)}
+.compact-card.playing-card{width:clamp(64px,9vw,140px);height:clamp(96px,18vh,200px);font-size:clamp(38px,6vw,82px)}
+@media (min-width:761px) and (max-width:1100px){
+ .arena{min-height:clamp(600px,76svh,820px);height:clamp(600px,76svh,820px)}
+ .arena-player{--seat-width:66px}
+ .middle-pile.compact-pile{width:min(44vw,440px);min-height:42vh}
+ .compact-pile .card-fan{height:clamp(150px,22vh,230px)}
+ .compact-card.playing-card{width:clamp(62px,8vw,100px);height:clamp(92px,15vh,150px);font-size:clamp(38px,5vw,58px)}
+}
+@media (max-width:760px){
+ .arena{height:clamp(560px,74svh,760px);min-height:clamp(560px,74svh,760px)}
+ .arena-player{--seat-width:58px}
+ .middle-pile.compact-pile{width:min(54vw,300px);min-height:clamp(170px,30vh,250px);padding:10px}
+ .compact-pile .card-fan{height:clamp(110px,20vh,175px)}
+ .compact-card.playing-card{width:clamp(48px,13vw,76px);height:clamp(72px,19vw,114px);font-size:clamp(30px,8vw,46px);margin-left:-14px}
+ .action-rail{left:8px;top:auto;bottom:8px;transform:none;width:108px;padding:7px;gap:6px}
+ .rail-hand strong{font-size:22px}
+ .action-rail .play-btn,.action-rail .slap-btn{min-height:42px;padding:6px 4px;font-size:9px}
+}
+@media (max-width:380px){.arena-player{--seat-width:52px}.middle-pile.compact-pile{width:50vw}.action-rail{width:96px}}
+@media (min-width:1500px){.arena{max-height:980px}.middle-pile.compact-pile{width:min(40vw,620px)}}
