@@ -17,8 +17,12 @@ const feedbackBuffersPromise = feedbackAudioContext
     })).then(Object.fromEntries).catch(() => ({}))
   : Promise.resolve({});
 
+let feedbackAudioUnlockPromise = Promise.resolve();
+
 function unlockFeedbackAudio() {
-  if (feedbackAudioContext?.state === "suspended") feedbackAudioContext.resume().catch(() => {});
+  if (feedbackAudioContext && feedbackAudioContext.state !== "running") {
+    feedbackAudioUnlockPromise = feedbackAudioContext.resume().catch(() => {});
+  }
 }
 
 function App() {
@@ -87,7 +91,7 @@ function App() {
   }, [inviteRoom, hasSavedPlayerName, name, roomCode, inviteJoinAttempted]);
 
   const playSound = correct => {
-    feedbackBuffersPromise.then(buffers => {
+    Promise.all([feedbackBuffersPromise, feedbackAudioUnlockPromise]).then(([buffers]) => {
       const buffer = buffers[correct ? "success" : "penalty"];
       if (!buffer || !feedbackAudioContext || feedbackAudioContext.state !== "running") return;
       const source = feedbackAudioContext.createBufferSource();
