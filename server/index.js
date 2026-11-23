@@ -14,16 +14,14 @@ const io = new Server(server, {
 });
 
 const rooms = new Map();
-const COLORS = ["red", "yellow", "green", "blue"];
+const CARD_COPIES = Math.max(1, Math.min(8, Number.parseInt(process.env.CARD_COPIES || "2", 10) || 2));
+const DECK_SIZE = 10 * CARD_COPIES;
 
 function makeDeck() {
-  return COLORS.flatMap(color =>
-    Array.from({ length: 10 }, (_, value) => ({
-      id: `${color}-${value}`,
-      color,
-      value
-    }))
-  );
+  return Array.from({ length: DECK_SIZE }, (_, index) => ({
+    id: `card-${index + 1}`,
+    value: Math.floor(index / CARD_COPIES)
+  }));
 }
 
 function shuffle(cards) {
@@ -97,7 +95,7 @@ function hasValidSlap(pile) {
     const a = cards[cards.length - 2];
     const b = cards[cards.length - 1];
     if (a.value === b.value) return "Doubles";
-    if (a.color === b.color) return "Same colour";
+    if (a.value + b.value === 10) return "Sum to 10";
   }
   if (cards.length >= 3) {
     const a = cards[cards.length - 3];
@@ -112,11 +110,11 @@ function hasValidSlap(pile) {
 }
 
 function finishIfNeeded(room) {
-  const winner = room.players.find(p => p.cards.length === 40);
+  const winner = room.players.find(p => p.cards.length === DECK_SIZE);
   if (winner) {
     room.status = "finished";
     room.winnerId = winner.id;
-    room.lastAction = `${winner.name} collected all 40 cards and wins!`;
+    room.lastAction = `${winner.name} collected all ${DECK_SIZE} cards and wins!`;
     return true;
   }
   return false;

@@ -84,3 +84,21 @@ input:focus{border-color:#d9f36a}
 @media(max-width:760px){.game-shell{padding:16px}.game-layout{grid-template-columns:1fr}.sidebar{order:2}.table-area{padding:8px 0;min-height:450px}.rule-grid{grid-template-columns:repeat(2,1fr)}.my-hand{flex-wrap:wrap}.play-btn{width:100%}.topbar{gap:10px}.room-pill{gap:6px}.landing>.brand{left:20px;top:20px}}
 
 .playing-card.hidden-card{background:repeating-linear-gradient(45deg,#293923,#293923 5px,#3d5332 5px,#3d5332 10px);border-color:#d9f36a;color:#d9f36a}
+
+/* Number-only center pile and feedback */
+.playing-card{width:104px;height:150px;margin-left:-8px;border-radius:12px;border:3px solid #f5f0e4;background:#f5f0e4;color:#171717;display:grid;place-items:center;padding:8px;font:800 64px 'DM Mono',monospace;box-shadow:0 8px 22px #0008}
+.playing-card:first-child{margin-left:0}
+.playing-card.hidden-card{background:repeating-linear-gradient(45deg,#293923,#293923 6px,#3d5332 6px,#3d5332 12px);border-color:#d9f36a;color:#d9f36a;font-size:42px}
+.card-fan{height:180px;margin:14px 0 8px}
+.middle-pile{transition:background .15s,border-color .15s,transform .15s}
+.middle-pile.success{animation:good-slap .7s ease}
+.middle-pile.penalty{animation:bad-slap .7s ease}
+@keyframes good-slap{0%,100%{transform:scale(1)}35%{transform:scale(1.025);border-color:#d9f36a;background:#33452d}}
+@keyframes bad-slap{0%,100%{transform:translateX(0)}15%,45%,75%{transform:translateX(-7px);border-color:#e34b3f}30%,60%,90%{transform:translateX(7px)}}
+.settings-toggle{background:transparent;color:#d9f36a;font-size:11px}
+.settings-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid #30392f;margin-top:14px;padding-top:14px}
+.settings-row>div{flex:1;min-width:190px}
+.settings-row b{font-size:12px}
+.settings-row p{font-size:11px;color:#9da99a;margin:4px 0}
+.settings-row .secondary{font-size:11px;padding:9px 11px}
+@media(max-width:760px){.playing-card{width:88px;height:128px;font-size:54px}.card-fan{height:155px}}
