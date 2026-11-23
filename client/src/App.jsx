@@ -100,6 +100,7 @@ function App() {
       source.playbackRate.value = buffer.duration / (FEEDBACK_DURATION_MS / 1000);
       source.connect(feedbackAudioContext.destination);
       source.start();
+      source.stop(feedbackAudioContext.currentTime + FEEDBACK_DURATION_MS / 1000);
     }).catch(() => { /* Audio is optional. */ });
   };
 
