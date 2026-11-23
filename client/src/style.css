@@ -181,7 +181,7 @@ button:disabled,.primary:disabled,.slap-btn:disabled{background:#454a45!importan
 .compact-pile .pile-total small{font-size:8px}
 .compact-pile .empty-pile{font-size:11px;color:#9da99a;padding:20px 0}
 .slap-fx-layer{position:absolute;z-index:8;inset:0;pointer-events:none;overflow:hidden}
-.slap-hand{position:absolute;left:50%;top:50%;font-size:clamp(150px,19vw,250px);line-height:1;filter:drop-shadow(0 12px 12px #000b);transform-origin:center;animation:hand-slap 850ms cubic-bezier(.16,.85,.22,1.1) both}
+.slap-hand{position:absolute;left:50%;top:50%;font-size:clamp(130px,16vw,210px);line-height:1;filter:drop-shadow(0 12px 12px #000b);transform-origin:center;animation:hand-slap 850ms cubic-bezier(.16,.85,.22,1.1) both}
 .slap-hand.win{filter:drop-shadow(0 0 25px #d9f36a)}
 .slap-hand.penalty{filter:drop-shadow(0 0 25px #ff6459)}
 .flight-cards{position:absolute;left:50%;top:50%;width:22px;height:32px;transform:translate(-50%,-50%);z-index:7}
