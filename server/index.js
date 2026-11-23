@@ -124,11 +124,20 @@ function hasValidSlap(pile) {
 }
 
 function finishIfNeeded(room) {
-  const winner = room.players.find(p => p.cards.length === DECK_SIZE);
-  if (winner) {
+  const playersWithCards = room.players.filter(p => p.cards.length > 0);
+  if (playersWithCards.length === 1) {
+    const winner = playersWithCards[0];
     room.status = "finished";
     room.winnerId = winner.id;
-    room.lastAction = `${winner.name} collected all ${DECK_SIZE} cards and wins!`;
+    room.turnPlayerId = null;
+    room.lastAction = `${winner.name} is the last player with cards and wins!`;
+    return true;
+  }
+  if (playersWithCards.length === 0) {
+    room.status = "finished";
+    room.winnerId = null;
+    room.turnPlayerId = null;
+    room.lastAction = "Game over: no players have cards left.";
     return true;
   }
   return false;
@@ -193,21 +202,16 @@ io.on("connection", socket => {
     const { room, player } = found;
     if (room.status !== "playing") return ack({ ok: false, error: "Game is not in progress." });
     if (room.turnPlayerId !== player.id) return ack({ ok: false, error: "It is not your turn." });
-    if (!player.cards.length) return ack({ ok: false, error: "You have no cards to play. You can still slap." });
+    if (!player.cards.length) return ack({ ok: false, error: "You are out of cards and cannot play." });
 
     const card = player.cards.pop();
     room.pile.push({ card, faceUp: true });
-    const nextId = nextPlayer(room, player.id);
-    room.turnPlayerId = nextId;
+    room.turnPlayerId = nextPlayer(room, player.id);
     room.lastAction = `${player.name} played a card.`;
-    if (!nextId && !hasValidSlap(room.pile)) {
-      player.cards.push(...room.pile.map(entry => entry.card));
-      room.pile = [];
+    if (!finishIfNeeded(room) && !room.turnPlayerId) {
       room.status = "finished";
-      room.winnerId = player.id;
-      room.lastAction = `${player.name} wins: nobody else has cards to play.`;
-    } else {
-      finishIfNeeded(room);
+      room.winnerId = null;
+      room.lastAction = "Game over: no players have cards left.";
     }
     ack({ ok: true });
     emitRoom(room);
@@ -218,6 +222,7 @@ io.on("connection", socket => {
     if (!found) return ack({ ok: false, error: "You are not in a room." });
     const { room, player } = found;
     if (room.status !== "playing") return ack({ ok: false, error: "Game is not in progress." });
+    if (player.cards.length === 0) return ack({ ok: false, error: "You are out of cards and cannot slap." });
 
     const pattern = hasValidSlap(room.pile);
     if (pattern) {
@@ -231,6 +236,10 @@ io.on("connection", socket => {
       const penalty = player.cards.splice(Math.max(0, player.cards.length - 2), 2);
       room.pile.push(...penalty.map(card => ({ card, faceUp: false })));
       room.lastAction = `${player.name} slapped incorrectly and added ${penalty.length} face-down penalty card(s) to the middle pile.`;
+      if (player.cards.length === 0 && room.turnPlayerId === player.id) {
+        room.turnPlayerId = nextPlayer(room, player.id);
+      }
+      finishIfNeeded(room);
       ack({ ok: true, correct: false, penalty: penalty.length });
     }
     emitRoom(room);

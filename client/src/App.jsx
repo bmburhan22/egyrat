@@ -94,7 +94,7 @@ function App() {
   const isHost = state?.players[0]?.id === socket.id;
   const isMyTurn = state?.turnPlayerId === socket.id;
   const winner = state?.players.find(p => p.id === state?.winnerId);
-  const canSlap = state?.status === "playing" && state.pile.length >= 2;
+  const canSlap = state?.status === "playing" && state.myCards > 0 && state.pile.length >= 2;
   const canPlay = state?.status === "playing" && isMyTurn && state.myCards > 0;
 
   const act = (event, payload = {}) => {
@@ -176,7 +176,7 @@ function App() {
         <div className="section-head"><span>PLAYERS</span><span>{state.players.length}</span></div>
         {state.players.map((p, i) => <div className={`player-row ${p.id === socket.id ? "self" : ""} ${p.id === state.turnPlayerId ? "turn" : ""}`} key={p.id}>
           <div className="avatar">{p.name.slice(0,1).toUpperCase()}</div>
-          <div className="player-meta"><strong>{p.name}{p.id === socket.id ? " (You)" : ""}</strong><small>{p.id === state.turnPlayerId ? "Playing next" : p.connected ? "In game" : "Disconnected"}</small></div>
+          <div className="player-meta"><strong>{p.name}{p.id === socket.id ? " (You)" : ""}</strong><small>{p.count === 0 ? "Out of cards" : p.id === state.turnPlayerId ? "Playing next" : p.connected ? "In game" : "Disconnected"}</small></div>
           <div className="count">{p.count}</div>
         </div>)}
         <div className="legend"><span className="dot"></span> Current turn</div>
@@ -209,11 +209,11 @@ function App() {
             <div><span className="eyebrow">YOUR HAND</span><h2>{state.myCards} <small>cards remaining</small></h2></div>
             <div className="back-stack"><div></div><div></div><div></div></div>
             <button className="primary play-btn" disabled={!canPlay} onClick={() => act("playCard")}>
-              {isMyTurn ? "PLAY A RANDOM CARD" : "WAIT FOR YOUR TURN"}
+              {state.myCards === 0 ? "YOU ARE OUT OF CARDS" : isMyTurn ? "PLAY A RANDOM CARD" : "WAIT FOR YOUR TURN"}
             </button>
           </div>
           <button className="slap-btn" disabled={!canSlap} onClick={() => act("slap")}>
-            <span>SLAP THE PILE</span><small>{state.pile.length < 2 ? "Need at least 2 cards in the pile" : "Claim the middle deck"}</small>
+            <span>SLAP THE PILE</span><small>{state.myCards === 0 ? "You are out of cards" : state.pile.length < 2 ? "Need at least 2 cards in the pile" : "Claim the middle deck"}</small>
           </button>
           {state.status === "finished" && <div className="panel result"><h2>{winner ? `${winner.name} wins!` : "Game over"}</h2><p>{state.lastAction}</p></div>}
         </>}
