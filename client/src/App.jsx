@@ -96,6 +96,8 @@ function App() {
       if (!buffer || !feedbackAudioContext || feedbackAudioContext.state !== "running") return;
       const source = feedbackAudioContext.createBufferSource();
       source.buffer = buffer;
+      // Speed up each source to fit the same fixed feedback window.
+      source.playbackRate.value = buffer.duration / (FEEDBACK_DURATION_MS / 1000);
       source.connect(feedbackAudioContext.destination);
       source.start();
     }).catch(() => { /* Audio is optional. */ });
