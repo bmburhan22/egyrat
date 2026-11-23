@@ -79,12 +79,12 @@ function App() {
       }
       if (event.repeat || event.ctrlKey || event.altKey || event.metaKey) return;
       if (event.target?.matches?.("input, textarea, select, [contenteditable=true]")) return;
-      if (event.key === keys.slap && canSlap) { event.preventDefault(); act("slap"); }
-      else if (event.key === keys.play && canPlay) { event.preventDefault(); act("playCard"); }
+      if (event.key === keys.slap && state?.status === "playing" && state.myCards > 0 && state.pile.length >= 2) { event.preventDefault(); act("slap"); }
+      else if (event.key === keys.play && state?.status === "playing" && state.turnPlayerId === socket.id && state.myCards > 0) { event.preventDefault(); act("playCard"); }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [keys, remapping, state, roomCode, canSlap, canPlay]);
+  }, [keys, remapping, state, roomCode]);
 
   useEffect(() => {
     if (!feedback) return;
