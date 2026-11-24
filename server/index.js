@@ -17,7 +17,7 @@ const rooms = new Map();
 const DEFAULT_CARD_COPIES = 4;
 const MIN_CARD_COPIES = 1;
 const MAX_CARD_COPIES = 8;
-const PENALTY_GRACE_MS = 200;
+const PENALTY_GRACE_MS = 400;
 
 function makeDeck(cardCopies) {
   return Array.from({ length: 10 * cardCopies }, (_, index) => ({
