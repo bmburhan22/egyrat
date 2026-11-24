@@ -282,6 +282,14 @@ io.on("connection", socket => {
       return ack({ ok: true, stale: true });
     }
 
+    // A retransmitted/double-clicked event for the same snapshot must not
+    // apply the same wrong-slap penalty more than once.
+    const snapshotKey = JSON.stringify(pileCardIds);
+    if (player.lastSlapSnapshot === snapshotKey) {
+      return ack({ ok: true, stale: true });
+    }
+    player.lastSlapSnapshot = snapshotKey;
+
     const snapshotPile = room.pile.slice(0, pileCardIds.length);
     const pattern = hasValidSlap(snapshotPile);
     if (pattern) {
