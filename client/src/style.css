@@ -267,7 +267,10 @@ button:disabled,.primary:disabled,.slap-btn:disabled{background:#454a45!importan
 @media(max-width:760px){
   .action-rail{
     position:sticky;
-    inset:auto;
+    top:auto;
+    right:auto;
+    bottom:8px;
+    left:auto;
     transform:none;
     width:100%;
     padding:8px;
