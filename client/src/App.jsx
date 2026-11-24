@@ -93,7 +93,7 @@ function App() {
     const rejoinSavedRoom = () => {
       const savedCode = sessionStorage.getItem("ers-room-code");
       const savedName = sessionStorage.getItem("ers-player-name");
-      if (!savedCode || !savedName || !sessionIdentity.room || savedCode !== sessionIdentity.room) return;
+      if (!savedCode || !savedName) return;
       socket.emit("joinRoom", { code: savedCode, name: savedName, playerToken }, result => {
         if (!result?.ok) {
           sessionStorage.removeItem("ers-room-code");
