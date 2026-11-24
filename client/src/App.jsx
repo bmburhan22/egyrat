@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
@@ -83,6 +83,7 @@ function App() {
     catch { return { slap: " ", play: "Enter" }; }
   });
   const [remapping, setRemapping] = useState("");
+  const slapPointerRef = useRef(null);
 
   useEffect(() => {
     socket.on("state", setState);
@@ -176,6 +177,33 @@ function App() {
   const playAngle = playFromBottom ? 0 : 180;
   const playStart = playFromBottom ? "42vh" : "-42vh";
 
+  const handleSlapPointerDown = event => {
+    const pointer = {
+      pointerType: event.pointerType || "unknown",
+      pointerDownAt: performance.now(),
+      eventTimeStamp: event.timeStamp
+    };
+    slapPointerRef.current = pointer;
+    console.info("[SLAP_DEBUG] pointerdown", pointer);
+  };
+
+  const handleSlapClick = () => {
+    const clickAt = performance.now();
+    const pointer = slapPointerRef.current;
+    const clientDebug = {
+      eventId: window.crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+      pointerType: pointer?.pointerType || "unknown",
+      pointerDownAt: pointer?.pointerDownAt ?? null,
+      clickAt,
+      pointerToClickMs: pointer ? Number((clickAt - pointer.pointerDownAt).toFixed(2)) : null,
+      emittedAt: performance.now(),
+      clientWallTime: Date.now()
+    };
+    console.info("[SLAP_DEBUG] click", clientDebug);
+    slapPointerRef.current = null;
+    act("slap", { clientDebug });
+  };
+
   const act = (event, payload = {}) => {
     if (event === "slap" && !canSlap) return;
     if (event === "playCard" && !canPlay) return;
@@ -183,7 +211,7 @@ function App() {
     setError("");
     setNotice("");
     const eventPayload = event === "slap"
-      ? { pileCardIds: state?.pile?.map(card => card.pileEntryId).filter(Boolean) ?? [] }
+      ? { pileCardIds: state?.pile?.map(card => card.pileEntryId).filter(Boolean) ?? [], clientDebug: payload.clientDebug ?? null }
       : payload;
     socket.emit(event, eventPayload, result => {
       if (!result?.ok) setError(result?.error || "Something went wrong.");
@@ -328,7 +356,7 @@ function App() {
         <aside className="action-rail panel">
           <div className="rail-hand"><span className="eyebrow">YOUR HAND</span><strong>{state.myCards}</strong><small>cards remaining</small></div>
           <button className="primary play-btn" disabled={!canPlay} onClick={() => act("playCard")}>{isMyTurn ? "PLAY CARD" : "WAIT TURN"}</button>
-          <button className="slap-btn" disabled={!canSlap} onClick={() => act("slap")}><span>SLAP</span><small>{state.myCards === 0 ? "No cards left" : state.pile.length < 2 ? "Need 2 cards in pile" : "Claim the pile"}</small></button>
+          <button className="slap-btn" disabled={!canSlap} onPointerDown={handleSlapPointerDown} onClick={handleSlapClick}><span>SLAP</span><small>{state.myCards === 0 ? "No cards left" : state.pile.length < 2 ? "Need 2 cards in pile" : "Claim the pile"}</small></button>
         </aside>
         {state.status === "finished" && <div className="panel result"><p>{state.lastAction}</p></div>}
       </>}
