@@ -173,7 +173,10 @@ io.on("connection", socket => {
     const returningPlayer = token ? room.players.find(p => p.token === token) : null;
     if (returningPlayer) {
       if (returningPlayer.connected && returningPlayer.id !== socket.id) {
-        return ack({ ok: false, error: "This player is already connected." });
+        // A brief network drop may leave the old socket alive until its ping timeout.
+        // Reclaim the seat immediately; the old socket's later disconnect is ignored
+        // because the player record now points at this new socket ID.
+        io.sockets.sockets.get(returningPlayer.id)?.disconnect(true);
       }
       returningPlayer.id = socket.id;
       returningPlayer.connected = true;
