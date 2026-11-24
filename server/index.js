@@ -155,6 +155,7 @@ function resolveSlapWindow(room, pending) {
       oneWayLatencyEstimateMs: Number(candidate.oneWayLatencyMs.toFixed(2)),
       adjustedArrivalOffsetMs: Number((adjustedArrivalTime(candidate.receivedAt, candidate.oneWayLatencyMs) - firstReceivedAt).toFixed(2)),
       pointerType: candidate.clientDebug?.pointerType ?? null,
+      userAgent: candidate.clientDebug?.userAgent ?? null,
       pointerToClickMs: candidate.clientDebug?.pointerToClickMs ?? null,
       clickToEmitMs: candidate.clientDebug?.clickToEmitMs ?? null
     })),
@@ -374,7 +375,8 @@ io.on("connection", socket => {
       pointerType: String(clientDebug.pointerType || "unknown").slice(0, 20),
       pointerToClickMs: Number.isFinite(clientDebug.pointerToClickMs) ? clientDebug.pointerToClickMs : null,
       clickToEmitMs: Number.isFinite(clientDebug.clickToEmitMs) ? clientDebug.clickToEmitMs : null,
-      clientWallTime: Number.isFinite(clientDebug.clientWallTime) ? clientDebug.clientWallTime : null
+      clientWallTime: Number.isFinite(clientDebug.clientWallTime) ? clientDebug.clientWallTime : null,
+      userAgent: String(clientDebug.userAgent || "").slice(0, 180)
     } : null;
     console.log("[SLAP_DEBUG] received", JSON.stringify({
       room: room.code, player: player.name, socketId: socket.id,
