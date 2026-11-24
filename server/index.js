@@ -64,7 +64,7 @@ function publicState(room, viewerId) {
       count: p.cards.length,
       connected: p.connected
     })),
-    pile: room.pile.map(entry => entry.faceUp ? entry.card : { hidden: true }),
+    pile: room.pile.map(entry => entry.faceUp ? { ...entry.card, pileEntryId: entry.entryId } : { hidden: true, pileEntryId: entry.entryId }),
     turnPlayerId: room.turnPlayerId,
     myCards: room.players.find(p => p.id === viewerId)?.cards.length ?? 0,
     winnerId: room.winnerId ?? null,
@@ -155,7 +155,7 @@ io.on("connection", socket => {
     const player = { id: socket.id, token: String(playerToken || ""), name: cleanName, cards: [], connected: true, disconnectedAt: null };
     const room = {
       code, players: [player], pile: [], status: "lobby", cardCopies: DEFAULT_CARD_COPIES,
-      turnPlayerId: null, winnerId: null, lastAction: `${cleanName} created the room.`, lastSlap: null, lastPlay: null, actionSeq: 0
+      turnPlayerId: null, winnerId: null, lastAction: `${cleanName} created the room.`, lastSlap: null, lastPlay: null, actionSeq: 0, pileSeq: 0
     };
     rooms.set(code, room);
     socket.join(code);
@@ -249,7 +249,7 @@ io.on("connection", socket => {
     if (!player.cards.length) return ack({ ok: false, error: "You are out of cards and cannot play." });
 
     const card = player.cards.pop();
-    room.pile.push({ card, faceUp: true });
+    room.pile.push({ card, faceUp: true, entryId: ++room.pileSeq });
     room.actionSeq = (room.actionSeq || 0) + 1;
     room.lastPlay = { id: room.actionSeq, playerId: player.id, value: card.value };
     room.turnPlayerId = nextPlayer(room, player.id);
@@ -277,7 +277,7 @@ io.on("connection", socket => {
       !Array.isArray(pileCardIds) ||
       pileCardIds.length < 2 ||
       pileCardIds.length > room.pile.length ||
-      !pileCardIds.every((id, index) => room.pile[index]?.card?.id === id)
+      !pileCardIds.every((id, index) => room.pile[index]?.entryId === id)
     ) {
       return ack({ ok: true, stale: true });
     }
@@ -296,7 +296,7 @@ io.on("connection", socket => {
       ack({ ok: true, correct: true, pattern, claimed: claimedCards.length });
     } else {
       const penalty = player.cards.splice(Math.max(0, player.cards.length - 2), 2);
-      room.pile.push(...penalty.map(card => ({ card, faceUp: true })));
+      room.pile.push(...penalty.map(card => ({ card, faceUp: true, entryId: ++room.pileSeq })));
       room.actionSeq = (room.actionSeq || 0) + 1;
       room.lastSlap = { id: room.actionSeq, type: "penalty", playerId: player.id, cards: penalty.map(card => card.value) };
       room.lastAction = `${player.name} slapped incorrectly and added ${penalty.length} face-up penalty card(s) to the middle pile.`;
