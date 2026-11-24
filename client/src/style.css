@@ -429,3 +429,14 @@ button:disabled,.primary:disabled,.slap-btn:disabled{background:#454a45!importan
 @media(prefers-reduced-motion:reduce){
   .slap-hand,.flight-cards span,.play-flight-card{animation-duration:1ms!important;animation-iteration-count:1!important}
 }
+
+/* Keep card-flight translation in screen coordinates; rotate only the glyph. */
+@keyframes cards-to-winner{
+  0%{transform:translateY(0) rotate(var(--flight-angle)) scale(1);opacity:1}
+  100%{transform:translateY(var(--winner-flight)) rotate(var(--flight-angle)) scale(.18);opacity:0}
+}
+@keyframes cards-to-pile{
+  0%{transform:translateY(var(--flight-start)) rotate(var(--flight-angle)) scale(.85);opacity:0}
+  20%{opacity:1}
+  100%{transform:translateY(0) rotate(var(--flight-angle)) scale(1);opacity:0}
+}
