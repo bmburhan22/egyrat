@@ -16,12 +16,13 @@ test("caps compensation and never allows a negative compensation", () => {
 test("corrects server arrival ordering when the slower route has higher RTT", () => {
   const laptop = { playerId: "laptop", receivedAt: 1010, oneWayLatencyMs: 5 };
   const phone = { playerId: "phone", receivedAt: 1060, oneWayLatencyMs: 55 };
-  assert.equal(chooseSlapCandidate([laptop, phone], () => 0).playerId, "phone");
+  assert.equal(adjustedArrivalTime(laptop.receivedAt, laptop.oneWayLatencyMs), adjustedArrivalTime(phone.receivedAt, phone.oneWayLatencyMs));
+  assert.equal(chooseSlapCandidate([laptop, phone], () => 1).playerId, "phone");
 });
 
 test("uses a random tie-break inside the configured timing tolerance", () => {
   const a = { playerId: "a", receivedAt: 1000, oneWayLatencyMs: 0 };
   const b = { playerId: "b", receivedAt: 1002, oneWayLatencyMs: 0 };
   assert.equal(chooseSlapCandidate([a, b], () => 0).playerId, "a");
-  assert.equal(chooseSlapCandidate([a, b], () => 0.99).playerId, "b");
+  assert.equal(chooseSlapCandidate([a, b], () => 1).playerId, "b");
 });

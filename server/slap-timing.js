@@ -1,3 +1,5 @@
+import { randomInt } from "node:crypto";
+
 export const MAX_ONE_WAY_COMPENSATION_MS = 100;
 export const SLAP_TIE_WINDOW_MS = 3;
 
@@ -18,7 +20,7 @@ export function adjustedArrivalTime(receivedAt, oneWayLatencyMs) {
   return receivedAt - compensation;
 }
 
-export function chooseSlapCandidate(candidates, random = Math.random) {
+export function chooseSlapCandidate(candidates, pickIndex = max => randomInt(max)) {
   if (!candidates.length) return null;
   const ordered = [...candidates].sort((a, b) =>
     adjustedArrivalTime(a.receivedAt, a.oneWayLatencyMs) -
@@ -28,5 +30,5 @@ export function chooseSlapCandidate(candidates, random = Math.random) {
   const tied = ordered.filter(candidate =>
     adjustedArrivalTime(candidate.receivedAt, candidate.oneWayLatencyMs) <= earliest + SLAP_TIE_WINDOW_MS
   );
-  return tied[Math.min(tied.length - 1, Math.floor(random() * tied.length))];
+  return tied[pickIndex(tied.length)];
 }
