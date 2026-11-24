@@ -148,11 +148,11 @@ function finishIfNeeded(room) {
 }
 
 io.on("connection", socket => {
-  socket.on("createRoom", ({ name }, ack = () => {}) => {
+  socket.on("createRoom", ({ name, playerToken }, ack = () => {}) => {
     const cleanName = String(name || "Player").trim().slice(0, 18) || "Player";
     let code;
     do code = roomCode(); while (rooms.has(code));
-    const player = { id: socket.id, name: cleanName, cards: [], connected: true };
+    const player = { id: socket.id, token: String(playerToken || ""), name: cleanName, cards: [], connected: true, disconnectedAt: null };
     const room = {
       code, players: [player], pile: [], status: "lobby", cardCopies: DEFAULT_CARD_COPIES,
       turnPlayerId: null, winnerId: null, lastAction: `${cleanName} created the room.`, lastSlap: null, lastPlay: null, actionSeq: 0
@@ -163,16 +163,38 @@ io.on("connection", socket => {
     emitRoom(room);
   });
 
-  socket.on("joinRoom", ({ code, name }, ack = () => {}) => {
+  socket.on("joinRoom", ({ code, name, playerToken }, ack = () => {}) => {
     const room = rooms.get(normalizeRoomCode(code));
     if (!room) return ack({ ok: false, error: "Room not found." });
-    if (room.status !== "lobby") return ack({ ok: false, error: "Game has already started." });
-    if (room.players.length >= 40) return ack({ ok: false, error: "Room is full (40-player limit)." });
     const cleanName = String(name || "Player").trim().slice(0, 18) || "Player";
+    const token = String(playerToken || "").slice(0, 128);
+
+    // Reclaim the existing player record, including their cards and seat.
+    const returningPlayer = token ? room.players.find(p => p.token === token) : null;
+    if (returningPlayer) {
+      if (returningPlayer.connected && returningPlayer.id !== socket.id) {
+        return ack({ ok: false, error: "This player is already connected." });
+      }
+      returningPlayer.id = socket.id;
+      returningPlayer.connected = true;
+      returningPlayer.disconnectedAt = null;
+      if (room.status === "playing" && !room.turnPlayerId && returningPlayer.cards.length > 0) {
+        room.turnPlayerId = returningPlayer.id;
+      }
+      socket.join(room.code);
+      room.lastAction = `${returningPlayer.name} reconnected.`;
+      ack({ ok: true, code: room.code, invitePath: `/?room=${room.code}`, reconnected: true });
+      emitRoom(room);
+      return;
+    }
+
+    // New players can only join before the game starts.
+    if (room.status !== "lobby") return ack({ ok: false, error: "Game has already started. Only players who were already in this room can rejoin." });
+    if (room.players.length >= 40) return ack({ ok: false, error: "Room is full (40-player limit)." });
     if (room.players.some(p => p.name.toLowerCase() === cleanName.toLowerCase())) {
       return ack({ ok: false, error: "That name is already taken in this room." });
     }
-    room.players.push({ id: socket.id, name: cleanName, cards: [], connected: true });
+    room.players.push({ id: socket.id, token, name: cleanName, cards: [], connected: true, disconnectedAt: null });
     socket.join(room.code);
     ack({ ok: true, code: room.code, invitePath: `/?room=${room.code}` });
     room.lastAction = `${cleanName} joined.`;
@@ -276,13 +298,11 @@ io.on("connection", socket => {
     if (!found) return;
     const { room, player } = found;
     player.connected = false;
-    room.lastAction = `${player.name} disconnected.`;
-    if (room.status === "lobby") {
-      room.players = room.players.filter(p => p.id !== socket.id);
-      if (!room.players.length) rooms.delete(room.code);
-    } else if (room.status === "playing" && room.turnPlayerId === player.id) {
+    player.disconnectedAt = Date.now();
+    room.lastAction = `${player.name} disconnected. They can rejoin this room.`;
+    if (room.status === "playing" && room.turnPlayerId === player.id) {
       room.turnPlayerId = nextPlayer(room, player.id);
-      finishIfNeeded(room);
+      // Keep the room available if everyone is temporarily disconnected.
     }
     emitRoom(room);
   });
