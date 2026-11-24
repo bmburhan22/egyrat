@@ -230,7 +230,6 @@ io.on("connection", socket => {
     const deck = shuffle(makeDeck(room.cardCopies));
     room.players.forEach(p => { p.cards = []; });
     deck.forEach((card, i) => room.players[i % room.players.length].cards.push(card));
-    room.players.forEach(p => { p.cards = shuffle(p.cards); });
     room.pile = [];
     room.status = "playing";
     room.turnPlayerId = room.players[0].id;
@@ -248,7 +247,7 @@ io.on("connection", socket => {
     if (room.turnPlayerId !== player.id) return ack({ ok: false, error: "It is not your turn." });
     if (!player.cards.length) return ack({ ok: false, error: "You are out of cards and cannot play." });
 
-    const card = player.cards.pop();
+    const card = player.cards.shift();
     room.pile.push({ card, faceUp: true, entryId: ++room.pileSeq });
     room.actionSeq = (room.actionSeq || 0) + 1;
     room.lastPlay = { id: room.actionSeq, playerId: player.id, value: card.value };
@@ -303,7 +302,7 @@ io.on("connection", socket => {
       finishIfNeeded(room);
       ack({ ok: true, correct: true, pattern, claimed: claimedCards.length });
     } else {
-      const penalty = player.cards.splice(Math.max(0, player.cards.length - 2), 2);
+      const penalty = player.cards.splice(0, 2);
       room.pile.push(...penalty.map(card => ({ card, faceUp: true, entryId: ++room.pileSeq })));
       room.actionSeq = (room.actionSeq || 0) + 1;
       room.lastSlap = { id: room.actionSeq, type: "penalty", playerId: player.id, cards: penalty.map(card => card.value) };
