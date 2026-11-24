@@ -196,9 +196,8 @@ function App() {
       pointerDownAt: pointer?.pointerDownAt ?? null,
       clickAt,
       pointerToClickMs: pointer ? Number((clickAt - pointer.pointerDownAt).toFixed(2)) : null,
-      clickToEmitMs: Number((performance.now() - clickAt).toFixed(2)),
-      emittedAt: performance.now(),
-      clientWallTime: Date.now()
+      clientWallTime: Date.now(),
+      userAgent: navigator.userAgent
     };
     console.info("[SLAP_DEBUG] click", clientDebug);
     slapPointerRef.current = null;
@@ -211,8 +210,13 @@ function App() {
     if (event === "slap") unlockFeedbackAudio();
     setError("");
     setNotice("");
+    const clientDebug = event === "slap" && payload.clientDebug ? {
+      ...payload.clientDebug,
+      emittedAt: performance.now(),
+      clickToEmitMs: Number((performance.now() - payload.clientDebug.clickAt).toFixed(2))
+    } : null;
     const eventPayload = event === "slap"
-      ? { pileCardIds: state?.pile?.map(card => card.pileEntryId).filter(Boolean) ?? [], clientDebug: payload.clientDebug ?? null }
+      ? { pileCardIds: state?.pile?.map(card => card.pileEntryId).filter(Boolean) ?? [], clientDebug }
       : payload;
     socket.emit(event, eventPayload, result => {
       if (!result?.ok) setError(result?.error || "Something went wrong.");
