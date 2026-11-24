@@ -258,7 +258,7 @@ io.on("connection", socket => {
     room.lastPlay = { id: room.actionSeq, playerId: player.id, value: card.value };
     room.turnPlayerId = nextPlayer(room, player.id);
     room.lastAction = `${player.name} played a card.`;
-    if (!finishIfNeeded(room) && !room.turnPlayerId) {
+    if (!finishIfNeeded(room) && !room.turnPlayerId && room.pendingPenaltyCount === 0) {
       room.status = "finished";
       room.winnerId = null;
       room.lastAction = "Game over: no players have cards left.";
