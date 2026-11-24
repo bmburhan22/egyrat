@@ -137,6 +137,10 @@ function hasValidSlap(pile) {
 function resolveSlapWindow(room, pending) {
   if (room.pendingSlap !== pending) return;
   room.pendingSlap = null;
+  if (room.status !== "playing") {
+    for (const candidate of pending.candidates) candidate.ack({ ok: true, stale: true });
+    return;
+  }
 
   const winnerCandidate = chooseSlapCandidate(pending.candidates);
   if (!winnerCandidate) return;
@@ -323,6 +327,7 @@ io.on("connection", socket => {
     if (!found) return ack({ ok: false, error: "You are not in a room." });
     const { room, player } = found;
     if (room.status !== "playing") return ack({ ok: false, error: "Game is not in progress." });
+    if (room.pendingSlap) return ack({ ok: false, error: "A slap is being resolved. Try again." });
     if (room.turnPlayerId !== player.id) return ack({ ok: false, error: "It is not your turn." });
     if (!player.cards.length) return ack({ ok: false, error: "You are out of cards and cannot play." });
 
