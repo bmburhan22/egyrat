@@ -263,24 +263,37 @@ io.on("connection", socket => {
     emitRoom(room);
   });
 
-  socket.on("slap", (_payload, ack = () => {}) => {
+  socket.on("slap", ({ pileCardIds } = {}, ack = () => {}) => {
     const found = findRoomForSocket(socket.id);
     if (!found) return ack({ ok: false, error: "You are not in a room." });
     const { room, player } = found;
     if (room.status !== "playing") return ack({ ok: false, error: "Game is not in progress." });
     if (player.cards.length === 0) return ack({ ok: false, error: "You are out of cards and cannot slap." });
 
-    const pattern = hasValidSlap(room.pile);
+    // Validate against the exact pile snapshot visible when the player clicked.
+    // The snapshot must still be a prefix of the live pile; later cards cannot
+    // alter its pattern, and a pile already claimed by another player is stale.
+    if (
+      !Array.isArray(pileCardIds) ||
+      pileCardIds.length < 2 ||
+      pileCardIds.length > room.pile.length ||
+      !pileCardIds.every((id, index) => room.pile[index]?.card?.id === id)
+    ) {
+      return ack({ ok: true, stale: true });
+    }
+
+    const snapshotPile = room.pile.slice(0, pileCardIds.length);
+    const pattern = hasValidSlap(snapshotPile);
     if (pattern) {
-      const claimedCards = room.pile.map(entry => entry.card);
+      const claimedEntries = room.pile.splice(0, snapshotPile.length);
+      const claimedCards = claimedEntries.map(entry => entry.card);
       player.cards.push(...claimedCards);
       room.actionSeq = (room.actionSeq || 0) + 1;
       room.lastSlap = { id: room.actionSeq, type: "win", playerId: player.id, cardCount: claimedCards.length, cards: claimedCards.map(card => card.value) };
-      room.pile = [];
       room.turnPlayerId = player.id;
-      room.lastAction = `${player.name} slapped correctly (${pattern}) and won the middle pile.`;
+      room.lastAction = `${player.name} slapped correctly (${pattern}) and won ${claimedCards.length} card(s) from the middle pile.`;
       finishIfNeeded(room);
-      ack({ ok: true, correct: true, pattern });
+      ack({ ok: true, correct: true, pattern, claimed: claimedCards.length });
     } else {
       const penalty = player.cards.splice(Math.max(0, player.cards.length - 2), 2);
       room.pile.push(...penalty.map(card => ({ card, faceUp: true })));
