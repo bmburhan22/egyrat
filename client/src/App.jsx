@@ -83,7 +83,7 @@ function App() {
       const savedCode = localStorage.getItem("ers-room-code");
       const savedName = localStorage.getItem("ers-player-name");
       const token = localStorage.getItem("ers-player-token");
-      if (!savedCode || !savedName || !token) return;
+      if (!savedCode || !savedName || !token || (inviteRoom && savedCode !== inviteRoom)) return;
       socket.emit("joinRoom", { code: savedCode, name: savedName, playerToken: token }, result => {
         if (!result?.ok) {
           localStorage.removeItem("ers-room-code");
