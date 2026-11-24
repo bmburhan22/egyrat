@@ -261,3 +261,42 @@ button:disabled,.primary:disabled,.slap-btn:disabled{background:#454a45!importan
 }
 
 @media(max-width:760px){.arena-player{--seat-radius:clamp(155px,46vw,180px)}}
+
+
+/* Mobile action bar: play on the left, larger slap target on the right. */
+@media(max-width:760px){
+  .action-rail{
+    position:sticky;
+    top:auto;
+    right:auto;
+    bottom:8px;
+    left:auto;
+    transform:none;
+    width:100%;
+    padding:8px;
+    display:flex;
+    flex-direction:row;
+    align-items:stretch;
+    gap:9px;
+    margin-top:8px;
+    background:#1b231c;
+    z-index:10;
+  }
+  .rail-hand{display:none}
+  .action-rail .play-btn{
+    flex:1;
+    width:0;
+    min-height:76px;
+    padding:10px 6px;
+    font-size:11px;
+  }
+  .action-rail .slap-btn{
+    flex:1.55;
+    width:0;
+    min-height:92px;
+    padding:12px 8px;
+    font-size:13px;
+  }
+  .action-rail .slap-btn span{font-size:20px}
+  .action-rail .slap-btn small{font-size:9px}
+}
