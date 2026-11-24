@@ -17,6 +17,7 @@ const rooms = new Map();
 const DEFAULT_CARD_COPIES = 4;
 const MIN_CARD_COPIES = 1;
 const MAX_CARD_COPIES = 8;
+const PENALTY_GRACE_MS = 200;
 
 function makeDeck(cardCopies) {
   return Array.from({ length: 10 * cardCopies }, (_, index) => ({
@@ -128,6 +129,9 @@ function hasValidSlap(pile) {
 }
 
 function finishIfNeeded(room) {
+  // Keep the round active briefly while newly incurred penalty cards are pending.
+  if (room.pendingPenaltyCount > 0) return false;
+
   const playersWithCards = room.players.filter(p => p.cards.length > 0);
   if (playersWithCards.length === 1) {
     const winner = playersWithCards[0];
@@ -155,7 +159,7 @@ io.on("connection", socket => {
     const player = { id: socket.id, token: String(playerToken || ""), name: cleanName, cards: [], connected: true, disconnectedAt: null };
     const room = {
       code, players: [player], pile: [], status: "lobby", cardCopies: DEFAULT_CARD_COPIES,
-      turnPlayerId: null, winnerId: null, lastAction: `${cleanName} created the room.`, lastSlap: null, lastPlay: null, actionSeq: 0, pileSeq: 0
+      turnPlayerId: null, winnerId: null, lastAction: `${cleanName} created the room.`, lastSlap: null, lastPlay: null, actionSeq: 0, pileSeq: 0, pendingPenaltyCount: 0
     };
     rooms.set(code, room);
     socket.join(code);
@@ -231,6 +235,7 @@ io.on("connection", socket => {
     room.players.forEach(p => { p.cards = []; });
     deck.forEach((card, i) => room.players[i % room.players.length].cards.push(card));
     room.pile = [];
+    room.pendingPenaltyCount = 0;
     room.status = "playing";
     room.turnPlayerId = room.players[0].id;
     room.winnerId = null;
@@ -303,14 +308,20 @@ io.on("connection", socket => {
       ack({ ok: true, correct: true, pattern, claimed: claimedCards.length });
     } else {
       const penalty = player.cards.splice(0, 2);
-      room.pile.push(...penalty.map(card => ({ card, faceUp: true, entryId: ++room.pileSeq })));
+      room.pendingPenaltyCount += 1;
       room.actionSeq = (room.actionSeq || 0) + 1;
       room.lastSlap = { id: room.actionSeq, type: "penalty", playerId: player.id, cards: penalty.map(card => card.value) };
-      room.lastAction = `${player.name} slapped incorrectly and added ${penalty.length} face-up penalty card(s) to the middle pile.`;
+      room.lastAction = `${player.name} slapped incorrectly. Penalty cards will be added shortly.`;
       if (player.cards.length === 0 && room.turnPlayerId === player.id) {
         room.turnPlayerId = nextPlayer(room, player.id);
       }
       finishIfNeeded(room);
+      setTimeout(() => {
+        room.pile.push(...penalty.map(card => ({ card, faceUp: true, entryId: ++room.pileSeq })));
+        room.pendingPenaltyCount = Math.max(0, room.pendingPenaltyCount - 1);
+        finishIfNeeded(room);
+        emitRoom(room);
+      }, PENALTY_GRACE_MS);
       ack({ ok: true, correct: false, penalty: penalty.length });
     }
     emitRoom(room);
