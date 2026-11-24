@@ -182,9 +182,14 @@ function App() {
     if (event === "slap") unlockFeedbackAudio();
     setError("");
     setNotice("");
-    socket.emit(event, payload, result => {
+    const eventPayload = event === "slap"
+      ? { pileCardIds: state?.pile?.map(card => card.pileEntryId).filter(Boolean) ?? [] }
+      : payload;
+    socket.emit(event, eventPayload, result => {
       if (!result?.ok) setError(result?.error || "Something went wrong.");
-      else if (event === "slap") {
+      else if (event === "slap" && result.stale) {
+        setNotice("Slap ignored: the pile had already changed.");
+      } else if (event === "slap") {
         setNotice(result.correct ? `Correct slap: ${result.pattern}!` : `Wrong slap: +${result.penalty} penalty cards.`);
         setFeedback(result.correct ? "success" : "penalty");
         playSound(result.correct);
