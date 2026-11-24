@@ -12,7 +12,9 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: process.env.CLIENT_ORIGIN?.split(",") ?? "*", methods: ["GET", "POST"] }
+  cors: { origin: process.env.CLIENT_ORIGIN?.split(",") ?? "*", methods: ["GET", "POST"] },
+  pingInterval: 2000,
+  pingTimeout: 5000
 });
 
 const rooms = new Map();
