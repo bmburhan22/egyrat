@@ -45,21 +45,32 @@ if (typeof window !== "undefined") {
 }
 
 function App() {
-  const [name, setName] = useState(() => localStorage.getItem("ers-player-name") || "");
-  const [playerToken] = useState(() => {
-    let token = localStorage.getItem("ers-player-token");
+  const [inviteRoom] = useState(() => new URLSearchParams(window.location.search).get("room")?.trim().toUpperCase() || "");
+  const [sessionIdentity] = useState(() => {
+    const savedToken = sessionStorage.getItem("ers-player-token");
+    const savedName = sessionStorage.getItem("ers-player-name");
+    const savedRoom = sessionStorage.getItem("ers-room-code");
+    const isReturningToInvite = Boolean(inviteRoom && savedRoom === inviteRoom && savedToken && savedName);
+    const bytes = new Uint8Array(24);
+    let token = isReturningToInvite || !inviteRoom ? savedToken : "";
     if (!token) {
-      const bytes = new Uint8Array(24);
       window.crypto.getRandomValues(bytes);
       token = Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
-      localStorage.setItem("ers-player-token", token);
     }
-    return token;
+    sessionStorage.setItem("ers-player-token", token);
+    if (inviteRoom && !isReturningToInvite) {
+      sessionStorage.removeItem("ers-player-name");
+      sessionStorage.removeItem("ers-room-code");
+    }
+    return {
+      token,
+      name: inviteRoom && !isReturningToInvite ? "" : (savedName || ""),
+      room: isReturningToInvite || !inviteRoom ? savedRoom : ""
+    };
   });
-  const [inviteRoom] = useState(() => new URLSearchParams(window.location.search).get("room")?.trim().toUpperCase() || "");
-  const [inviteJoinAttempted, setInviteJoinAttempted] = useState(false);
-  const [hasSavedPlayerName] = useState(() => Boolean(localStorage.getItem("ers-player-name")));
-  const [roomInput, setRoomInput] = useState(() => new URLSearchParams(window.location.search).get("room")?.trim().toUpperCase() || "");
+  const [name, setName] = useState(sessionIdentity.name);
+  const [playerToken] = useState(sessionIdentity.token);
+  const [roomInput, setRoomInput] = useState(inviteRoom);
   const [roomCode, setRoomCode] = useState("");
   const [state, setState] = useState(null);
   const [error, setError] = useState("");
@@ -80,25 +91,23 @@ function App() {
 
   useEffect(() => {
     const rejoinSavedRoom = () => {
-      const savedCode = localStorage.getItem("ers-room-code");
-      const savedName = localStorage.getItem("ers-player-name");
-      const token = localStorage.getItem("ers-player-token");
-      if (!savedCode || !savedName || !token || (inviteRoom && savedCode !== inviteRoom)) return;
-      socket.emit("joinRoom", { code: savedCode, name: savedName, playerToken: token }, result => {
+      const savedCode = sessionStorage.getItem("ers-room-code");
+      const savedName = sessionStorage.getItem("ers-player-name");
+      if (!savedCode || !savedName) return;
+      socket.emit("joinRoom", { code: savedCode, name: savedName, playerToken }, result => {
         if (!result?.ok) {
-          localStorage.removeItem("ers-room-code");
+          sessionStorage.removeItem("ers-room-code");
           setError(result?.error || "Could not rejoin the previous room.");
           return;
         }
         setRoomCode(result.code);
         setError("");
-        window.history.replaceState({}, "", result.invitePath || `/?room=${result.code}`);
       });
     };
     socket.on("connect", rejoinSavedRoom);
     if (socket.connected) rejoinSavedRoom();
     return () => socket.off("connect", rejoinSavedRoom);
-  }, []);
+  }, [playerToken, sessionIdentity.room]);
 
   useEffect(() => {
     const onKeyDown = event => {
@@ -131,25 +140,7 @@ function App() {
     if (state?.lastPlay) setPlayFx(state.lastPlay);
   }, [state?.lastPlay?.id]);
 
-  useEffect(() => {
-    if (!inviteRoom || !hasSavedPlayerName || !name.trim() || roomCode || inviteJoinAttempted) return;
-    const tryJoin = () => {
-      setInviteJoinAttempted(true);
-      socket.emit("joinRoom", { name: name.trim(), code: inviteRoom, playerToken }, result => {
-        if (!result?.ok) {
-          setError(result?.error || "Could not join invited room.");
-          return;
-        }
-        localStorage.setItem("ers-player-name", name.trim());
-        localStorage.setItem("ers-room-code", result.code);
-        setRoomCode(result.code);
-        setError("");
-      });
-    };
-    if (socket.connected) tryJoin();
-    else socket.once("connect", tryJoin);
-    return () => socket.off("connect", tryJoin);
-  }, [inviteRoom, hasSavedPlayerName, name, roomCode, inviteJoinAttempted]);
+
 
   const playSound = correct => {
     if (!feedbackAudioContext || !feedbackBuffersPromise) return;
@@ -202,8 +193,8 @@ function App() {
     if (!name.trim()) return setError("Enter a player name.");
     socket.emit("createRoom", { name, playerToken }, result => {
       if (!result?.ok) return setError(result?.error || "Could not create room.");
-      localStorage.setItem("ers-player-name", name.trim());
-      localStorage.setItem("ers-room-code", result.code);
+      sessionStorage.setItem("ers-player-name", name.trim());
+      sessionStorage.setItem("ers-room-code", result.code);
       setRoomCode(result.code);
       window.history.replaceState({}, "", result.invitePath || `/?room=${result.code}`);
       setError("");
@@ -215,8 +206,8 @@ function App() {
     const cleanName = name.trim();
     socket.emit("joinRoom", { name: cleanName, code: roomInput, playerToken }, result => {
       if (!result?.ok) return setError(result?.error || "Could not join room.");
-      localStorage.setItem("ers-player-name", cleanName);
-      localStorage.setItem("ers-room-code", result.code);
+      sessionStorage.setItem("ers-player-name", cleanName);
+      sessionStorage.setItem("ers-room-code", result.code);
       setRoomCode(result.code);
       window.history.replaceState({}, "", result.invitePath || `/?room=${result.code}`);
       setError("");
