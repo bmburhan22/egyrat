@@ -126,8 +126,8 @@ test("wrong-slap penalty cards stay out of the pile for 600ms", { timeout: 30000
     assert.equal(stateA.lastSlap.playerId, a.id, "second slap incorrectly replaced the first slap");
     assert.equal(stateA.players.find(player => player.id === b.id).count, playerBCardCount, "second player was incorrectly penalized");
 
-    // At 450ms from the first slap, the configured 600ms grace period must
-    // still be holding the first player's two penalty cards.
+    // At 450ms after the penalty is registered, the configured 600ms grace
+    // period must still be holding the first player's two penalty cards.
     await delay(290);
     assert.equal(stateA.pile.length, pileLengthBefore, "penalty cards entered the pile before 600ms");
 

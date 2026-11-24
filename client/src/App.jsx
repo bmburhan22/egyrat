@@ -187,8 +187,10 @@ function App() {
       : payload;
     socket.emit(event, eventPayload, result => {
       if (!result?.ok) setError(result?.error || "Something went wrong.");
-      else if (event === "slap" && result.stale) {
-        setNotice("Slap ignored: the pile had already changed.");
+      else if (event === "slap" && result.arbitrationLost) {
+        setNotice("Another player won the slap.");
+      } else if (event === "slap" && result.stale) {
+        setNotice(result.penaltyPending ? "Slap ignored: penalty cards are pending." : "Slap ignored: the pile had already changed.");
       } else if (event === "slap") {
         setNotice(result.correct ? `Correct slap: ${result.pattern}!` : `Wrong slap: +${result.penalty} penalty cards.`);
         setFeedback(result.correct ? "success" : "penalty");

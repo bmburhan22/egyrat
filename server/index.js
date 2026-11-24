@@ -3,6 +3,8 @@ import http from "http";
 import cors from "cors";
 import { Server } from "socket.io";
 import { randomInt } from "node:crypto";
+import { performance } from "node:perf_hooks";
+import { chooseSlapCandidate, estimateOneWayLatency } from "./slap-timing.js";
 
 const app = express();
 app.use(cors({ origin: process.env.CLIENT_ORIGIN?.split(",") ?? "*" }));
@@ -10,7 +12,9 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: process.env.CLIENT_ORIGIN?.split(",") ?? "*", methods: ["GET", "POST"] }
+  cors: { origin: process.env.CLIENT_ORIGIN?.split(",") ?? "*", methods: ["GET", "POST"] },
+  pingInterval: 2000,
+  pingTimeout: 5000
 });
 
 const rooms = new Map();
@@ -18,6 +22,8 @@ const DEFAULT_CARD_COPIES = 4;
 const MIN_CARD_COPIES = 1;
 const MAX_CARD_COPIES = 8;
 const PENALTY_GRACE_MS = 600;
+const SLAP_ARBITRATION_WINDOW_MS = 150;
+const RTT_SAMPLE_LIMIT = 10;
 
 function makeDeck(cardCopies) {
   return Array.from({ length: 10 * cardCopies }, (_, index) => ({
@@ -128,6 +134,63 @@ function hasValidSlap(pile) {
   return null;
 }
 
+function resolveSlapWindow(room, pending) {
+  if (room.pendingSlap !== pending) return;
+  room.pendingSlap = null;
+  if (room.status !== "playing") {
+    for (const candidate of pending.candidates) candidate.ack({ ok: true, stale: true });
+    return;
+  }
+
+  const winnerCandidate = chooseSlapCandidate(pending.candidates);
+  if (!winnerCandidate) return;
+  const winner = room.players.find(player => player.id === winnerCandidate.playerId);
+  if (!winner ||
+      pending.pileCardIds.length > room.pile.length ||
+      !pending.pileCardIds.every((id, index) => room.pile[index]?.entryId === id)) {
+    for (const candidate of pending.candidates) candidate.ack({ ok: true, stale: true });
+    return;
+  }
+
+  const snapshotPile = room.pile.slice(0, pending.pileCardIds.length);
+  const pattern = hasValidSlap(snapshotPile);
+  if (pattern) {
+    const claimedEntries = room.pile.splice(0, snapshotPile.length);
+    const claimedCards = claimedEntries.map(entry => entry.card);
+    winner.cards.push(...claimedCards);
+    room.actionSeq = (room.actionSeq || 0) + 1;
+    room.lastSlap = { id: room.actionSeq, type: "win", playerId: winner.id, cardCount: claimedCards.length, cards: claimedCards.map(card => card.value) };
+    room.turnPlayerId = winner.id;
+    room.lastAction = `${winner.name} slapped correctly (${pattern}) and won ${claimedCards.length} card(s) from the middle pile.`;
+    finishIfNeeded(room);
+    winnerCandidate.ack({ ok: true, correct: true, pattern, claimed: claimedCards.length });
+  } else {
+    const penalty = winner.cards.splice(0, 2);
+    room.pendingPenaltyCount += 1;
+    room.actionSeq = (room.actionSeq || 0) + 1;
+    room.lastSlap = { id: room.actionSeq, type: "penalty", playerId: winner.id, cards: penalty.map(card => card.value) };
+    room.lastAction = `${winner.name} slapped incorrectly. Penalty cards will be added shortly.`;
+    if (winner.cards.length === 0 && room.turnPlayerId === winner.id) {
+      room.turnPlayerId = nextPlayer(room, winner.id);
+    }
+    finishIfNeeded(room);
+    setTimeout(() => {
+      room.pile.push(...penalty.map(card => ({ card, faceUp: true, entryId: ++room.pileSeq })));
+      room.pendingPenaltyCount = Math.max(0, room.pendingPenaltyCount - 1);
+      finishIfNeeded(room);
+      emitRoom(room);
+    }, PENALTY_GRACE_MS);
+    winnerCandidate.ack({ ok: true, correct: false, penalty: penalty.length });
+  }
+
+  for (const candidate of pending.candidates) {
+    if (candidate !== winnerCandidate) {
+      candidate.ack({ ok: true, stale: true, arbitrationLost: true });
+    }
+  }
+  emitRoom(room);
+}
+
 function finishIfNeeded(room) {
   // Keep the round active briefly while newly incurred penalty cards are pending.
   if (room.pendingPenaltyCount > 0) return false;
@@ -152,6 +215,21 @@ function finishIfNeeded(room) {
 }
 
 io.on("connection", socket => {
+  // Measure transport RTT from server-originated Engine.IO heartbeats.
+  // The client never supplies a latency value.
+  socket.data.rttSamples = [];
+  let lastPingSentAt = null;
+  socket.conn.on("packetCreate", packet => {
+    if (packet.type === "ping") lastPingSentAt = performance.now();
+  });
+  socket.conn.on("packet", packet => {
+    if (packet.type !== "pong" || lastPingSentAt === null) return;
+    const rtt = Math.max(0, performance.now() - lastPingSentAt);
+    lastPingSentAt = null;
+    socket.data.rttSamples.push(rtt);
+    if (socket.data.rttSamples.length > RTT_SAMPLE_LIMIT) socket.data.rttSamples.shift();
+  });
+
   socket.on("createRoom", ({ name, playerToken }, ack = () => {}) => {
     const cleanName = String(name || "Player").trim().slice(0, 18) || "Player";
     let code;
@@ -159,7 +237,7 @@ io.on("connection", socket => {
     const player = { id: socket.id, token: String(playerToken || ""), name: cleanName, cards: [], connected: true, disconnectedAt: null };
     const room = {
       code, players: [player], pile: [], status: "lobby", cardCopies: DEFAULT_CARD_COPIES,
-      turnPlayerId: null, winnerId: null, lastAction: `${cleanName} created the room.`, lastSlap: null, lastPlay: null, actionSeq: 0, pileSeq: 0, pendingPenaltyCount: 0
+      turnPlayerId: null, winnerId: null, lastAction: `${cleanName} created the room.`, lastSlap: null, lastPlay: null, actionSeq: 0, pileSeq: 0, pendingPenaltyCount: 0, pendingSlap: null
     };
     rooms.set(code, room);
     socket.join(code);
@@ -249,6 +327,7 @@ io.on("connection", socket => {
     if (!found) return ack({ ok: false, error: "You are not in a room." });
     const { room, player } = found;
     if (room.status !== "playing") return ack({ ok: false, error: "Game is not in progress." });
+    if (room.pendingSlap) return ack({ ok: false, error: "A slap is being resolved. Try again." });
     if (room.turnPlayerId !== player.id) return ack({ ok: false, error: "It is not your turn." });
     if (!player.cards.length) return ack({ ok: false, error: "You are out of cards and cannot play." });
 
@@ -274,15 +353,12 @@ io.on("connection", socket => {
     if (room.status !== "playing") return ack({ ok: false, error: "Game is not in progress." });
     if (player.cards.length === 0) return ack({ ok: false, error: "You are out of cards and cannot slap." });
 
-    // The first wrong slap owns the grace window. Ignore every other slap
-    // until its penalty cards have entered the pile; do not penalize them.
+    // A wrong slap already resolved; preserve the existing penalty grace lock.
     if (room.pendingPenaltyCount > 0) {
       return ack({ ok: true, stale: true, penaltyPending: true });
     }
 
-    // Validate against the exact pile snapshot visible when the player clicked.
-    // The snapshot must still be a prefix of the live pile; later cards cannot
-    // alter its pattern, and a pile already claimed by another player is stale.
+    // Only arbitrate slaps for the exact same pile snapshot.
     if (
       !Array.isArray(pileCardIds) ||
       pileCardIds.length < 2 ||
@@ -292,45 +368,38 @@ io.on("connection", socket => {
       return ack({ ok: true, stale: true });
     }
 
-    // A retransmitted/double-clicked event for the same snapshot must not
-    // apply the same wrong-slap penalty more than once.
     const snapshotKey = JSON.stringify(pileCardIds);
     if (player.lastSlapSnapshot === snapshotKey) {
       return ack({ ok: true, stale: true });
     }
-    player.lastSlapSnapshot = snapshotKey;
 
-    const snapshotPile = room.pile.slice(0, pileCardIds.length);
-    const pattern = hasValidSlap(snapshotPile);
-    if (pattern) {
-      const claimedEntries = room.pile.splice(0, snapshotPile.length);
-      const claimedCards = claimedEntries.map(entry => entry.card);
-      player.cards.push(...claimedCards);
-      room.actionSeq = (room.actionSeq || 0) + 1;
-      room.lastSlap = { id: room.actionSeq, type: "win", playerId: player.id, cardCount: claimedCards.length, cards: claimedCards.map(card => card.value) };
-      room.turnPlayerId = player.id;
-      room.lastAction = `${player.name} slapped correctly (${pattern}) and won ${claimedCards.length} card(s) from the middle pile.`;
-      finishIfNeeded(room);
-      ack({ ok: true, correct: true, pattern, claimed: claimedCards.length });
-    } else {
-      const penalty = player.cards.splice(0, 2);
-      room.pendingPenaltyCount += 1;
-      room.actionSeq = (room.actionSeq || 0) + 1;
-      room.lastSlap = { id: room.actionSeq, type: "penalty", playerId: player.id, cards: penalty.map(card => card.value) };
-      room.lastAction = `${player.name} slapped incorrectly. Penalty cards will be added shortly.`;
-      if (player.cards.length === 0 && room.turnPlayerId === player.id) {
-        room.turnPlayerId = nextPlayer(room, player.id);
+    const candidate = {
+      playerId: player.id,
+      pileCardIds: [...pileCardIds],
+      snapshotKey,
+      receivedAt: performance.now(),
+      oneWayLatencyMs: estimateOneWayLatency(socket.data.rttSamples)
+    };
+
+    if (room.pendingSlap) {
+      if (room.pendingSlap.snapshotKey !== snapshotKey ||
+          room.pendingSlap.candidates.some(item => item.playerId === player.id)) {
+        return ack({ ok: true, stale: true });
       }
-      finishIfNeeded(room);
-      setTimeout(() => {
-        room.pile.push(...penalty.map(card => ({ card, faceUp: true, entryId: ++room.pileSeq })));
-        room.pendingPenaltyCount = Math.max(0, room.pendingPenaltyCount - 1);
-        finishIfNeeded(room);
-        emitRoom(room);
-      }, PENALTY_GRACE_MS);
-      ack({ ok: true, correct: false, penalty: penalty.length });
+      player.lastSlapSnapshot = snapshotKey;
+      room.pendingSlap.candidates.push({ ...candidate, ack });
+      return;
     }
-    emitRoom(room);
+
+    player.lastSlapSnapshot = snapshotKey;
+    const pending = {
+      snapshotKey,
+      pileCardIds: [...pileCardIds],
+      candidates: [{ ...candidate, ack }],
+      timer: null
+    };
+    room.pendingSlap = pending;
+    pending.timer = setTimeout(() => resolveSlapWindow(room, pending), SLAP_ARBITRATION_WINDOW_MS);
   });
 
   socket.on("disconnect", () => {
