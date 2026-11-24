@@ -165,13 +165,16 @@ function App() {
   const winner = state?.players.find(p => p.id === state?.winnerId);
   const canSlap = state?.status === "playing" && state.myCards > 0 && state.pile.length >= 2;
   const canPlay = state?.status === "playing" && isMyTurn && state.myCards > 0;
-  const seatAngle = index => state.players.length === 2
-    ? (index === 0 ? 180 : 0)
-    : (360 / state.players.length) * index - 90;
-  const slapPlayerIndex = slapFx ? state.players.findIndex(p => p.id === slapFx.playerId) : -1;
-  const slapAngle = slapPlayerIndex >= 0 ? seatAngle(slapPlayerIndex) : -90;
-  const playPlayerIndex = playFx ? state.players.findIndex(p => p.id === playFx.playerId) : -1;
-  const playAngle = playPlayerIndex >= 0 ? seatAngle(playPlayerIndex) : -90;
+  // Fixed top/bottom seats make the feedback direction deterministic.
+  const slapPlayer = slapFx ? state.players.find(p => p.id === slapFx.playerId) : null;
+  const slapFromBottom = slapPlayer?.id === socket.id;
+  const slapAngle = slapFromBottom ? 0 : 180;
+  const slapStart = slapFromBottom ? "42vh" : "-42vh";
+  const slapEnd = slapFromBottom ? "90px" : "-90px";
+  const playPlayer = playFx ? state.players.find(p => p.id === playFx.playerId) : null;
+  const playFromBottom = playPlayer?.id === socket.id;
+  const playAngle = playFromBottom ? 0 : 180;
+  const playStart = playFromBottom ? "42vh" : "-42vh";
 
   const act = (event, payload = {}) => {
     if (event === "slap" && !canSlap) return;
@@ -278,15 +281,15 @@ function App() {
           <div className="table-status"><span className={`status-dot ${state.status === "playing" ? "live" : ""}`}></span>{state.status === "finished" ? "GAME OVER" : "GAME IN PROGRESS"}</div>
         </div>
         <div className="arena" style={{ "--player-count": state.players.length }}>
-          {state.players.map((p, i) => {
-            const angle = seatAngle(i);
-            return <div className={`arena-player ${p.id === socket.id ? "self" : ""} ${p.id === state.turnPlayerId ? "turn" : ""} ${!p.connected ? "disconnected" : ""}`} key={p.id} style={{ "--seat-angle": `${angle}deg` }}>
+          <div className="opponent-seats" aria-label="Other players">
+            {state.players.filter(p => p.id !== socket.id).map(p => <div className={`arena-player compact-seat ${p.id === state.turnPlayerId ? "turn" : ""} ${!p.connected ? "disconnected" : ""}`} key={p.id}>
               <div className="human-avatar"><span className="human-head"></span><span className="human-body"></span></div>
-              <strong title={p.name}>{p.name}{p.id === socket.id ? " (You)" : ""}</strong>
+              <strong title={p.name}>{p.name}</strong>
               <span className="player-card-count">{p.count}<small>CARDS</small></span>
               {p.id === state.turnPlayerId && <span className="turn-indicator">TURN</span>}
-            </div>;
-          })}
+            </div>)}
+          </div>
+          <div className="table-center">
           <div className="middle-pile compact-pile">
             <div className="pile-label">MIDDLE DECK <span>{state.pile.length} cards</span></div>
             {state.pile.length ? <div className="card-fan compact-fan">
@@ -296,13 +299,22 @@ function App() {
             </div> : <div className="empty-pile">Play begins here</div>}
             <div className="pile-total">{state.pile.length}<small>TOTAL</small></div>
           </div>
-          {slapFx && <div className="slap-fx-layer" key={`slap-${slapFx.id}`} style={{ "--flight-angle": `${slapAngle}deg` }}>
-            <div className={`slap-hand ${slapFx.type}`}>✋</div>
+          </div>
+          <div className="self-seat">
+            <div className={`arena-player compact-seat self ${me.id === state.turnPlayerId ? "turn" : ""}`}>
+              <div className="human-avatar"><span className="human-head"></span><span className="human-body"></span></div>
+              <strong title={me.name}>{me.name} (You)</strong>
+              <span className="player-card-count">{me.count}<small>CARDS</small></span>
+              {me.id === state.turnPlayerId && <span className="turn-indicator">YOUR TURN</span>}
+            </div>
+          </div>
+          {slapFx && <div className="slap-fx-layer" key={`slap-${slapFx.id}`} style={{ "--flight-angle": `${slapAngle}deg`, "--flight-start": slapStart, "--flight-end": slapEnd, "--winner-flight": slapFromBottom ? "38vh" : "-38vh" }}>
+            <div className={`slap-hand ${slapFx.type}`}>👆</div>
             {slapFx.type === "penalty" && <div className="flight-cards penalty-flight">{(slapFx.cards || []).map((value, i) => <span key={i} style={{ "--flight-delay": `${i * 90}ms` }}>{value}</span>)}</div>}
             {slapFx.type === "win" && <div className="flight-cards win-flight">{(slapFx.cards || []).map((value, i) => <span key={i} style={{ "--flight-delay": `${i * 10}ms`, "--card-offset": `${(i % 5 - 2) * 3}px` }}>{value}</span>)}</div>}
             <div className={`slap-callout ${slapFx.type}`}>{slapFx.type === "win" ? "PILE CLAIMED" : "PENALTY CARDS"}</div>
           </div>}
-          {playFx && <div className="play-fx-layer" key={playFx.id} style={{ "--flight-angle": `${playAngle}deg` }}>
+          {playFx && <div className="play-fx-layer" key={playFx.id} style={{ "--flight-angle": `${playAngle}deg`, "--flight-start": playStart }}>
             <span className="play-flight-card">{playFx.value}</span>
           </div>}
         </div>
