@@ -87,7 +87,7 @@ function App() {
       if (!hasJoinedThisPage || !savedCode || !savedName || !token) return;
       socket.emit("joinRoom", { code: savedCode, name: savedName, playerToken: token }, result => {
         if (!result?.ok) {
-          localStorage.removeItem("ers-room-code");
+          sessionStorage.removeItem("ers-room-code");
           setError(result?.error || "Could not rejoin the previous room.");
           return;
         }
