@@ -274,6 +274,12 @@ io.on("connection", socket => {
     if (room.status !== "playing") return ack({ ok: false, error: "Game is not in progress." });
     if (player.cards.length === 0) return ack({ ok: false, error: "You are out of cards and cannot slap." });
 
+    // The first wrong slap owns the grace window. Ignore every other slap
+    // until its penalty cards have entered the pile; do not penalize them.
+    if (room.pendingPenaltyCount > 0) {
+      return ack({ ok: true, stale: true, penaltyPending: true });
+    }
+
     // Validate against the exact pile snapshot visible when the player clicked.
     // The snapshot must still be a prefix of the live pile; later cards cannot
     // alter its pattern, and a pile already claimed by another player is stale.

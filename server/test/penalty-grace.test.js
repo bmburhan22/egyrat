@@ -115,12 +115,23 @@ test("wrong-slap penalty cards stay out of the pile for 600ms", { timeout: 30000
       s => s.lastSlap?.type === "penalty" && s.lastSlap.playerId === a.id
     );
     assert.equal(penaltyState.pile.length, pileLengthBefore);
+    const playerBCardCount = penaltyState.players.find(player => player.id === b.id).count;
 
-    // At 450ms, the configured 600ms grace period must still be holding the cards.
-    await delay(450);
+    // A second player slapping the same still-visible pile 140ms later must
+    // be ignored while the first player's penalty cards are pending.
+    await delay(140);
+    const secondSlap = await emitAck(b, "slap", { pileCardIds: snapshot });
+    assert.deepEqual(secondSlap, { ok: true, stale: true, penaltyPending: true });
+    await delay(20);
+    assert.equal(stateA.lastSlap.playerId, a.id, "second slap incorrectly replaced the first slap");
+    assert.equal(stateA.players.find(player => player.id === b.id).count, playerBCardCount, "second player was incorrectly penalized");
+
+    // At 450ms from the first slap, the configured 600ms grace period must
+    // still be holding the first player's two penalty cards.
+    await delay(290);
     assert.equal(stateA.pile.length, pileLengthBefore, "penalty cards entered the pile before 600ms");
 
-    // After the grace period, both penalty cards must be appended.
+    // After the grace period, exactly the first player's two penalty cards are appended.
     await waitForState(() => stateA, s => s.pile.length === pileLengthBefore + 2, 1500);
     assert.equal(stateA.pile.length, pileLengthBefore + 2);
   } finally {
