@@ -46,6 +46,16 @@ if (typeof window !== "undefined") {
 
 function App() {
   const [name, setName] = useState(() => localStorage.getItem("ers-player-name") || "");
+  const [playerToken] = useState(() => {
+    let token = localStorage.getItem("ers-player-token");
+    if (!token) {
+      const bytes = new Uint8Array(24);
+      window.crypto.getRandomValues(bytes);
+      token = Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+      localStorage.setItem("ers-player-token", token);
+    }
+    return token;
+  });
   const [inviteRoom] = useState(() => new URLSearchParams(window.location.search).get("room")?.trim().toUpperCase() || "");
   const [inviteJoinAttempted, setInviteJoinAttempted] = useState(false);
   const [hasSavedPlayerName] = useState(() => Boolean(localStorage.getItem("ers-player-name")));
@@ -66,6 +76,28 @@ function App() {
   useEffect(() => {
     socket.on("state", setState);
     return () => socket.off("state", setState);
+  }, []);
+
+  useEffect(() => {
+    const rejoinSavedRoom = () => {
+      const savedCode = localStorage.getItem("ers-room-code");
+      const savedName = localStorage.getItem("ers-player-name");
+      const token = localStorage.getItem("ers-player-token");
+      if (!savedCode || !savedName || !token) return;
+      socket.emit("joinRoom", { code: savedCode, name: savedName, playerToken: token }, result => {
+        if (!result?.ok) {
+          localStorage.removeItem("ers-room-code");
+          setError(result?.error || "Could not rejoin the previous room.");
+          return;
+        }
+        setRoomCode(result.code);
+        setError("");
+        window.history.replaceState({}, "", result.invitePath || `/?room=${result.code}`);
+      });
+    };
+    socket.on("connect", rejoinSavedRoom);
+    if (socket.connected) rejoinSavedRoom();
+    return () => socket.off("connect", rejoinSavedRoom);
   }, []);
 
   useEffect(() => {
@@ -103,12 +135,13 @@ function App() {
     if (!inviteRoom || !hasSavedPlayerName || !name.trim() || roomCode || inviteJoinAttempted) return;
     const tryJoin = () => {
       setInviteJoinAttempted(true);
-      socket.emit("joinRoom", { name: name.trim(), code: inviteRoom }, result => {
+      socket.emit("joinRoom", { name: name.trim(), code: inviteRoom, playerToken }, result => {
         if (!result?.ok) {
           setError(result?.error || "Could not join invited room.");
           return;
         }
         localStorage.setItem("ers-player-name", name.trim());
+        localStorage.setItem("ers-room-code", result.code);
         setRoomCode(result.code);
         setError("");
       });
@@ -167,9 +200,10 @@ function App() {
 
   const create = () => {
     if (!name.trim()) return setError("Enter a player name.");
-    socket.emit("createRoom", { name }, result => {
+    socket.emit("createRoom", { name, playerToken }, result => {
       if (!result?.ok) return setError(result?.error || "Could not create room.");
       localStorage.setItem("ers-player-name", name.trim());
+      localStorage.setItem("ers-room-code", result.code);
       setRoomCode(result.code);
       window.history.replaceState({}, "", result.invitePath || `/?room=${result.code}`);
       setError("");
@@ -179,9 +213,10 @@ function App() {
   const join = () => {
     if (!name.trim() || !roomInput.trim()) return setError("Enter your name and room code.");
     const cleanName = name.trim();
-    socket.emit("joinRoom", { name: cleanName, code: roomInput }, result => {
+    socket.emit("joinRoom", { name: cleanName, code: roomInput, playerToken }, result => {
       if (!result?.ok) return setError(result?.error || "Could not join room.");
       localStorage.setItem("ers-player-name", cleanName);
+      localStorage.setItem("ers-room-code", result.code);
       setRoomCode(result.code);
       window.history.replaceState({}, "", result.invitePath || `/?room=${result.code}`);
       setError("");
