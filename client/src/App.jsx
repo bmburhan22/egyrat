@@ -183,7 +183,7 @@ function App() {
     setError("");
     setNotice("");
     const eventPayload = event === "slap"
-      ? { pileCardIds: state?.pile?.map(card => card.id).filter(Boolean) ?? [] }
+      ? { pileCardIds: state?.pile?.map(card => card.pileEntryId).filter(Boolean) ?? [] }
       : payload;
     socket.emit(event, eventPayload, result => {
       if (!result?.ok) setError(result?.error || "Something went wrong.");
