@@ -196,6 +196,7 @@ function App() {
       pointerDownAt: pointer?.pointerDownAt ?? null,
       clickAt,
       pointerToClickMs: pointer ? Number((clickAt - pointer.pointerDownAt).toFixed(2)) : null,
+      clickToEmitMs: Number((performance.now() - clickAt).toFixed(2)),
       emittedAt: performance.now(),
       clientWallTime: Date.now()
     };
