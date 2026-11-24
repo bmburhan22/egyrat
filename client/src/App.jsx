@@ -209,7 +209,7 @@ function App() {
         <h1>Egyptian Rat Screw</h1>
         <p className="sub">Flip blind. Watch the pile. Slap when you spot a pattern.</p>
         <label>Your display name</label>
-        <input value={name} onChange={e => setName(e.target.value)} maxLength={18} placeholder="e.g. Alex" />
+        <input value={name} onChange={e => { setName(e.target.value); if (error === "That name is already taken in this room.") setError(""); }} maxLength={18} placeholder="e.g. Alex" />
         <button className="primary full" onClick={create}>Create a room</button>
         <div className="or"><span>{inviteRoom ? `INVITED TO ROOM ${inviteRoom}` : "OR JOIN A ROOM"}</span></div>
         <input value={roomInput} onChange={e => setRoomInput(e.target.value.toUpperCase())} maxLength={5} placeholder="ROOM CODE" readOnly={Boolean(inviteRoom)} />
