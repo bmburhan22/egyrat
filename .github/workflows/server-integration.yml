@@ -1,0 +1,23 @@
+name: Server integration tests
+
+on:
+  pull_request:
+    paths:
+      - "server/**"
+      - ".github/workflows/server-integration.yml"
+  push:
+    branches: [master]
+    paths:
+      - "server/**"
+      - ".github/workflows/server-integration.yml"
+
+jobs:
+  server-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --prefix server
+      - run: npm test --prefix server
