@@ -4,7 +4,7 @@ import cors from "cors";
 import { Server } from "socket.io";
 import { randomInt } from "node:crypto";
 import { performance } from "node:perf_hooks";
-import { chooseSlapCandidate, estimateOneWayLatency } from "./slap-timing.js";
+import { adjustedArrivalTime, chooseSlapCandidate, estimateOneWayLatency } from "./slap-timing.js";
 
 const app = express();
 app.use(cors({ origin: process.env.CLIENT_ORIGIN?.split(",") ?? "*" }));
@@ -144,6 +144,22 @@ function resolveSlapWindow(room, pending) {
 
   const winnerCandidate = chooseSlapCandidate(pending.candidates);
   if (!winnerCandidate) return;
+  const firstReceivedAt = Math.min(...pending.candidates.map(candidate => candidate.receivedAt));
+  console.log("[SLAP_DEBUG] arbitration", JSON.stringify({
+    room: room.code,
+    resolvedAt: Date.now(),
+    arbitrationWaitMs: Number((performance.now() - pending.startedAt).toFixed(2)),
+    candidates: pending.candidates.map(candidate => ({
+      player: room.players.find(player => player.id === candidate.playerId)?.name || "unknown",
+      serverReceiptOffsetMs: Number((candidate.receivedAt - firstReceivedAt).toFixed(2)),
+      oneWayLatencyEstimateMs: Number(candidate.oneWayLatencyMs.toFixed(2)),
+      adjustedArrivalOffsetMs: Number((adjustedArrivalTime(candidate.receivedAt, candidate.oneWayLatencyMs) - firstReceivedAt).toFixed(2)),
+      pointerType: candidate.clientDebug?.pointerType ?? null,
+      pointerToClickMs: candidate.clientDebug?.pointerToClickMs ?? null,
+      clickToEmitMs: candidate.clientDebug?.clickToEmitMs ?? null
+    })),
+    winner: room.players.find(player => player.id === winnerCandidate.playerId)?.name || "unknown"
+  }));
   const winner = room.players.find(player => player.id === winnerCandidate.playerId);
   if (!winner ||
       pending.pileCardIds.length > room.pile.length ||
@@ -346,10 +362,28 @@ io.on("connection", socket => {
     emitRoom(room);
   });
 
-  socket.on("slap", ({ pileCardIds } = {}, ack = () => {}) => {
+  socket.on("slap", ({ pileCardIds, clientDebug } = {}, ack = () => {}) => {
     const found = findRoomForSocket(socket.id);
     if (!found) return ack({ ok: false, error: "You are not in a room." });
     const { room, player } = found;
+    const serverReceivedAt = performance.now();
+    const serverReceivedAtWall = Date.now();
+    const oneWayLatencyMs = estimateOneWayLatency(socket.data.rttSamples);
+    const safeClientDebug = clientDebug && typeof clientDebug === "object" ? {
+      eventId: String(clientDebug.eventId || "").slice(0, 80),
+      pointerType: String(clientDebug.pointerType || "unknown").slice(0, 20),
+      pointerToClickMs: Number.isFinite(clientDebug.pointerToClickMs) ? clientDebug.pointerToClickMs : null,
+      clickToEmitMs: Number.isFinite(clientDebug.clickToEmitMs) ? clientDebug.clickToEmitMs : null,
+      clientWallTime: Number.isFinite(clientDebug.clientWallTime) ? clientDebug.clientWallTime : null
+    } : null;
+    console.log("[SLAP_DEBUG] received", JSON.stringify({
+      room: room.code, player: player.name, socketId: socket.id,
+      serverReceivedAt: serverReceivedAtWall,
+      clientDebug: safeClientDebug,
+      rttSampleCount: socket.data.rttSamples.length,
+      rttSamplesMs: socket.data.rttSamples.map(value => Number(value.toFixed(2))),
+      oneWayLatencyEstimateMs: Number(oneWayLatencyMs.toFixed(2))
+    }));
     if (room.status !== "playing") return ack({ ok: false, error: "Game is not in progress." });
     if (player.cards.length === 0) return ack({ ok: false, error: "You are out of cards and cannot slap." });
 
@@ -377,8 +411,10 @@ io.on("connection", socket => {
       playerId: player.id,
       pileCardIds: [...pileCardIds],
       snapshotKey,
-      receivedAt: performance.now(),
-      oneWayLatencyMs: estimateOneWayLatency(socket.data.rttSamples)
+      receivedAt: serverReceivedAt,
+      oneWayLatencyMs,
+      clientDebug: safeClientDebug,
+      receivedAtWall: serverReceivedAtWall
     };
 
     if (room.pendingSlap) {
@@ -396,6 +432,7 @@ io.on("connection", socket => {
       snapshotKey,
       pileCardIds: [...pileCardIds],
       candidates: [{ ...candidate, ack }],
+      startedAt: performance.now(),
       timer: null
     };
     room.pendingSlap = pending;
